@@ -84,13 +84,13 @@ n = size(lambdaf,1);
 tn = size(t,2);
 lambda = nan(n,tn);
 lambdaD = nan(n,tn);
-lambda(tn) = lambdaf;
+lambda(:,tn) = lambdaf;
 
 %% Simulate backward
 for k = tn:-1:2
-    lambdaD(k) = g(x(:,k),u(:,k-1),lambda(k),t(k));
+    lambdaD(:,k) = g(x(:,k),u(:,k-1),lambda(:,k),t(k));
     ts = t(k) - t(k-1);
-    lambda(:,k-1) = lambda(:,k) - lambdaD(k)*ts;
+    lambda(:,k-1) = lambda(:,k) - lambdaD(:,k)*ts;
 end
 
 end

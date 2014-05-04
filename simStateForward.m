@@ -84,7 +84,7 @@ n = size(x0,1);
 tn = size(t,2);
 x = nan(n,tn);
 xD = nan(n,tn-1);
-x(1) = x0;
+x(:,1) = x0;
 
 %% Simulate forward
 for k = 1:tn-1

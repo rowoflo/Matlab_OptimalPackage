@@ -80,8 +80,8 @@ function gamma = armijo(x,u,lambda,t,f,J,dHdu,alpha,beta,varargin)
 %     'Property "propertyName" must be a ? x ? matrix of real numbers.')
 
 %% Initialize
-dHduVec = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[1 3 2]);
-norm2dHdu = sum(dHduVec.^2);
+dHduTraj = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
+norm2dHdu = sum(sum(dHduTraj.*dHduTraj,1));
 kappa = 0;
 J0 = J(x,u,t);
 J1 = inf;
@@ -90,8 +90,8 @@ kappaMax = 30;
 %% Calculate step size
 while J1 - J0 > -alpha*beta^kappa*norm2dHdu && kappa < kappaMax
     gamma = beta^kappa;
-    u1 = u - gamma*dHduVec;
-    x1 = optimal.simStateForward(f,x(1),u1,t);
+    u1 = u - gamma*dHduTraj;
+    x1 = optimal.simStateForward(f,x(:,1),u1,t);
     J1 = J(x1,u1,t);
     kappa = kappa + 1;
 end

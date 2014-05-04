@@ -1,32 +1,168 @@
-function [x,u,lambda,JTape,gammaTape] = bolza(t,x0,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,varargin)
-% The "bolza" function ...  TODO: Add description
+function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,varargin)
+% The "bolza" function solves the Bolza optimal control problem. The Bolza
+% problem is defined as
 %
-% SYNTAX: TODO: Add syntax
-%   output = bolza(input1)
-%   output = bolza(input1,input2)
-%   output = bolza(input1,input2,'PropertyName',PropertyValue,...)
+% $$\min_u \int_{t_0}^{t_f} L(x,u,t) dt + \Psi(x_f,t_f)$$
+% $$s.t.~ \dot{x} = f(x,u,t),~x(0) = x_0$$
+%
+% SYNTAX:
+%   [x,u,lambda,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx)
+%   [x,u,lambda,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'PropertyName',PropertyValue,...)
+%
+% NOTATION:
+%   n - State dimension.
+%   m - Input dimension.
+%   tn - Number of time samples.
+%   kn - Number of iterations.
 % 
-% INPUTS: TODO: Add inputs
-%   input1 - (size type) 
-%       Description.
+% INPUTS:
+%   t - (1 x tn number) 
+%       Row vector of all time points.
 %
-%   input2 - (size type) [defaultInputValue] 
-%       Description for optional input.
+%   x0 - (n x 1 number)
+%       Initial state.
 %
-% PROPERTIES: TODO: Add properties
-%   'propertiesName' - (size type) [defaultPropertyValue]
-%       Description.
+%   u - (m x tn-1 number)
+%       Initial input trajectory.
+%
+%   f - (function_handle)
+%       State dynamics.
+%       SYNTAX:
+%           xDot = f(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           xDot - (n x tn number) State derivative.
+%
+%   dfdx - (function handle)
+%       State dynamics partial derivative to state.
+%       SYNTAX:
+%           A = dfdx(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           A - (n x n x tn number) Partial to state.
+%
+%   dfdu - (function handle)
+%       State dynamics partial derivative to input.
+%       SYNTAX:
+%           B = dfdx(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           B - (n x m x tn number) Partial to input.
+%
+%   L - (function handle)
+%       Instantaneous cost.
+%       SYNTAX:
+%           c  = L(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           c - (1 x tn number) Cost.
+%
+%   dLdx - (function handle)
+%       Instantaneous cost partial to state.
+%       SYNTAX:
+%           cx  = dLdx(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           cx - (1 x n x tn number) Cost partial to state.
+%
+%   dLdu - (function handle)
+%       Instantaneous cost partial to input.
+%       SYNTAX:
+%           cu  = dLdu(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           cu - (1 x m x tn number) Cost partial to input.
+%
+%   Psi - (function handle)
+%       Final cost.
+%       SYNTAX:
+%           cf  = Psi(xf,tf);
+%       INPUTS:
+%           xf - (n x tn number) Final state.
+%           tf - (1 x tn number) Final time.
+%       OUTPUTS:
+%           cf - (1 x 1 number) Final cost.
+%
+%   dPsidx - (function handle)
+%       Final cost partial to final state
+%       SYNTAX:
+%           cfx  = dPsidx(xf,tf);
+%       INPUTS:
+%           xf - (n x tn number) Final state.
+%           tf - (1 x tn number) Final time.
+%       OUTPUTS:
+%           cfx - (1 x n number) Final cost partial to final state.
+%           
+%
+% PROPERTIES:
+%   'armijoParams' - (1 x 2 0<=number<=1) [ [0.5 0.5] ]
+%       Armijo parameters [alpha beta].
+%
+%   'stoppingCondition' - (function handle)
+%       Iteration stopping condition
+%       SYNTAX:
+%           stopFlag  = stop(x,u,t,k);
+%       INPUTS:
+%           x - (n x 1 number) Current state.
+%           u - (m x 1 number) Current input.
+%           t - (1 x 1 number) Current time.
+%           k - (1 x 1 number) Current iteration number.
+%       OUTPUTS:
+%           stopFlag - (1 x 1 logical) If true the optimization iteration
+%               will stop.
 % 
-% OUTPUTS: TODO: Add outputs
-%   output - (size type) 
-%       Description.
+% OUTPUTS:
+%   x - (n x tn number) 
+%       Locally optimal state trajectory.
+%   
+%   u - (m x tn-1 number)
+%       Locally optimal input trajectory.
 %
-% EXAMPLES: TODO: Add examples
+%   lambda - (n x tn number)
+%       Locally optimal costate trajectory.
+%
+%   J - (function handle)
+%       Trajectory cost.
+%       SYNTAX:
+%           C  = J(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           C - (1 x 1 number) Trajectory cost.
+%
+%   JTape - (1 x kn number)
+%       History of cost verse iteration number.
+%
+%   gammaTape - (1 x kn number)
+%       History of step size verse iteration number.
+%
+% EXAMPLES:
+%   See "bolzaExamples.m" script for examples.
 %
 % NOTES:
 %
-% NECESSARY FILES: TODO: Add necessary files
-%   +somePackage, someFile.m
+% NECESSARY FILES:
+%   +optimal, armjo.m, simStateForward.m, simCostateBackward.m
 %
 % SEE ALSO: TODO: Add see alsos
 %    relatedFunction1 | relatedFunction2
@@ -46,10 +182,55 @@ narginchk(10,inf)
 % Apply default values TODO: Add apply defaults
 % if nargin < 2, input2 = defaultInputValue; end
 
-% Check input arguments for errors TODO: Add error checks
-% assert(isnumeric(input1) && isreal(input1) && isequal(size(input1),[1,1]),...
-%     'optimal:bolza:input1',...
-%     'Input argument "input1" must be a ? x ? matrix of real numbers.')
+% Check input arguments for errors
+assert(isnumeric(t) && isvector(t),...
+    'optimal:bolza:t',...
+    'Input argument "t" must be a vector of numbers.')
+t = t(:)';
+tn = length(t); % Number of time samples
+
+assert(isnumeric(x0) && isvector(x0),...
+    'optimal:bolza:x0',...
+    'Input argument "x0" must be a vector of numbers.')
+x0 = x0(:);
+n = size(x0,1); % Stete dimension
+
+assert(isnumeric(u) && size(u,2) == tn-1,...
+    'optimal:bolza:u',...
+    'Input argument "u" must be a matrix of size m x %d.',tn-1)
+m = size(u,1); % Input dimension
+
+assert(isa(f,'function_handle'),...
+    'optimal:bolza:f',...
+    'Input argument "f" must be a function handle.')
+
+assert(isa(dfdx,'function_handle'),...
+    'optimal:bolza:dfdx',...
+    'Input argument "dfdx" must be a function handle.')
+
+assert(isa(dfdu,'function_handle'),...
+    'optimal:bolza:dfdu',...
+    'Input argument "dfdu" must be a function handle.')
+
+assert(isa(L,'function_handle'),...
+    'optimal:bolza:L',...
+    'Input argument "L" must be a function handle.')
+
+assert(isa(dLdx,'function_handle'),...
+    'optimal:bolza:dLdx',...
+    'Input argument "dLdx" must be a function handle.')
+
+assert(isa(dLdu,'function_handle'),...
+    'optimal:bolza:dLdu',...
+    'Input argument "dLdu" must be a function handle.')
+
+assert(isa(Psi,'function_handle'),...
+    'optimal:bolza:Psi',...
+    'Input argument "Psi" must be a function handle.')
+
+assert(isa(dPsidx,'function_handle'),...
+    'optimal:bolza:dPsidx',...
+    'Input argument "dPsidx" must be a function handle.')
 
 % Get and check properties
 propargin = size(varargin,2);
@@ -65,6 +246,8 @@ for iParam = 1:propargin/2
     switch lower(propStrs{iParam})
         case lower('armijoParams')
             armijoParams = propValues{iParam};
+        case lower('stoppingCondition')
+            stoppingCondition = propValues{iParam};
         otherwise
             error('optimal:bolza:options',...
               'Option string ''%s'' is not recognized.',propStrs{iParam})
@@ -73,6 +256,7 @@ end
 
 % Set to default value if necessary
 if ~exist('armijoParams','var'), armijoParams = [0.5 0.5]; end
+if ~exist('stoppingCondition','var'), stoppingCondition = @stopDefault; end
 
 % Check property values for errors
 assert(isnumeric(armijoParams) && isreal(armijoParams) && length(armijoParams) == 2,...
@@ -81,22 +265,13 @@ assert(isnumeric(armijoParams) && isreal(armijoParams) && length(armijoParams) =
 alpha = armijoParams(1);
 beta = armijoParams(2);
 
+assert(isa(stoppingCondition,'function_handle'),...
+    'optimal:bolza:stoppingCondition',...
+    'Property "stoppingCondition" must be a function handle.')
+
 %% Initialize
-% Time - variables
-tn = length(t); % (1 x 1) Number of time samples
-
-% State
-n = size(x0,1); % (1 x 1) Dimension of the state
-x = nan(n,tn); % (n x tn) State vector record
-
-% Input
-m = size(dfdu(0,0,0),2);
-% u = zeros(m,tn-1); % (m x tn) Input vector record
-% u = sin(2*pi/t(end)*t(1:end-1));
-u = rand(m,tn-1);
-
 % Hamiltonian
-H = @(x_,u_,lambda_,t_) L(x_,u_,t_) + sum(lambda_.*f(x_,u_,t_),1); % (1 x 1) Hamiltonian
+% H = @(x_,u_,lambda_,t_) L(x_,u_,t_) + sum(lambda_.*f(x_,u_,t_),1); % (1 x 1) Hamiltonian
 dHdx = @(x_,u_,lambda_,t_) dLdx(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 n 1]).*dfdx(x_,u_,t_),1); % (1 x n) Hamiltonian partial to state
 dHdu = @(x_,u_,lambda_,t_) dLdu(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 m 1]).*dfdu(x_,u_,t_),1); % (1 x m) Hamiltonian partial to input
 
@@ -106,7 +281,7 @@ lambdaf = @(xf_) dPsidx(xf_)'; % (n x 1) Costate at final time
 g = @(x_,u_,lambda_,t_) -dHdx(x_,u_,lambda_,t_)'; % (n x 1) Costate dynamics (i.e lambdaDot)
 
 % Cost
-J = @(x_,u_,t_) sum(L(x_(:,1:end-1),u_(1:end-1),t_(1:end-1))) + Psi(x_(end),t_(end)); % (1 x 1) Cost
+J = @(x_,u_,t_) sum(L(x_(:,1:end-1),u_,t_(1:end-1)).*diff(t)) + Psi(x_(:,end),t_(end)); % (1 x 1) Cost
 
 % Records
 JTape = nan;
@@ -115,14 +290,13 @@ gammaTape = nan;
 %% Solve
 x = optimal.simStateForward(f,x0,u,t);
 k = 0;
-C = 10;
-while ~stop(x,u,t,k,C)
+while ~stoppingCondition(x,u,t,k)
     % Increment counter
     k = k + 1;
     
     % Simulate state forward
     x = optimal.simStateForward(f,x0,u,t);
-    xf = x(end);
+    xf = x(:,end);
     
     % Simulate costate backward
     lambda = optimal.simCostateBackward(g,lambdaf(xf),x,u,t);
@@ -135,8 +309,8 @@ while ~stop(x,u,t,k,C)
     gammaTape(k) = gamma;
     
     % Update input
-    dHduVec = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[1 3 2]);
-    u = u - gamma*dHduVec;
+    dHduTraj = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
+    u = u - gamma*dHduTraj;
     
 end
 x = optimal.simStateForward(f,x0,u,t);
@@ -144,8 +318,8 @@ x = optimal.simStateForward(f,x0,u,t);
 
 end
 
-function stopFlag = stop(x,u,t,k,C)
-stopFlag = k > C;
+function stopFlag = stopDefault(~,~,~,k)
+stopFlag = k >= 10;
 end
 
 
