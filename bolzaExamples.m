@@ -84,7 +84,7 @@ fprintf('Final state: %.3f\n',x(end));
 
 % Plot
 figure(1)
-set(1,'Position',[0 0 800 430])
+set(1,'Position',[0 0 700 375])
 subplot(2,1,1)
 plot(t(1:end-1),uI)
 title(['Initial Input Trajectory (Cost: ' num2str(JI) ')'])
@@ -102,7 +102,7 @@ ylabel('State')
 grid on
 
 figure(2)
-set(2,'Position',[100 100 800 700])
+set(2,'Position',[100 100 700 375])
 subplot(3,1,1)
 plot(t(1:end-1),u)
 title(['Final Input Trajectory (Cost: ' num2str(JF) ')'])
@@ -126,7 +126,7 @@ ylabel('Costate')
 grid on
 
 figure(3)
-set(3,'Position',[200 200 800 700])
+set(3,'Position',[200 200 700 375])
 subplot(2,1,1)
 plot(JTape)
 xlim([1 numel(gammaTape)])
