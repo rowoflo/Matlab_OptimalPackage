@@ -1,0 +1,591 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Bolza Examples</title><meta name="generator" content="MATLAB 8.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-05-05"><meta name="DC.source" content="bolzaExamples.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Bolza Examples</h1><!--introduction--><p>The <tt>bolzaExamples.m</tt> script is a set of examples illustrating how to use the <tt>optimal.bolza</tt> function. The Bolza problem is defined as</p><p><img src="bolzaExamples_eq63157.png" alt="$$\min_u \int_{t_0}^{t_f} L(x,u,t) dt + \Psi(x_f,t_f)$$&#xA;$$s.t.~ \dot{x} = f(x,u,t),~x(0) = x_0$$"></p><p>NECESSARY FILES AND/OR PACKAGES:</p><pre class="language-matlab">+optimal, bolza.m, simStateForward.m
+</pre><p>AUTHOR:   <a href="http://rowlandoflaherty.com">Rowland O'Flaherty</a></p><p>CREATION DATE:   02-MAY-2014</p><p>MODIFIED DATE:   03-MAY-2014</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Import</a></li><li><a href="#2">Single Integrator Example</a></li><li><a href="#3">Single Integrator - Initialize</a></li><li><a href="#4">Single Integrator - Solve</a></li><li><a href="#5">Single Integrator - Display Results</a></li><li><a href="#7">Unicycle Example</a></li><li><a href="#8">Unicycle - Initialize</a></li><li><a href="#9">Single Integrator - Solve</a></li><li><a href="#10">Single Integrator - Display Results</a></li><li><a href="#11">Plot</a></li></ul></div><h2>Import<a name="1"></a></h2><p>Import the <tt>optimal</tt> package.</p><pre class="codeinput">import <span class="string">optimal.*</span>
+
+<span class="keyword">if</span> 1
+</pre><h2>Single Integrator Example<a name="2"></a></h2><p>In this example the <tt>optimal.bolza</tt> function is used to solve the following problem:</p><p><img src="bolzaExamples_eq16355.png" alt="$$\min_u \int_0^{10} u^2 dt + 100(x - 10)^2$$&#xA;$$s.t.~ \dot{x} = u,~x(0) = 0$$"></p><h2>Single Integrator - Initialize<a name="3"></a></h2><pre class="codeinput"><span class="comment">% Time - parameters</span>
+ts = .1; <span class="comment">% (1 x 1) Time step size</span>
+t0 = 0; <span class="comment">% (1 x 1) Initial time</span>
+tf = 10; <span class="comment">% (1 x 1) Final time</span>
+<span class="comment">% Time - variables</span>
+t = t0:ts:tf; <span class="comment">% (1 x tn) Time vector record for all time</span>
+tn = length(t); <span class="comment">% (1 x 1) Number of time samples</span>
+
+<span class="comment">% State - parameters</span>
+x0 = 0; <span class="comment">% (n x 1) Initial state</span>
+xBar = 10; <span class="comment">% (n x 1) Desired state</span>
+
+<span class="comment">% Input - parameters</span>
+m = 1; <span class="comment">% (1 x 1) Dimension of the input</span>
+<span class="comment">% Input - variables</span>
+uI = zeros(m,tn-1); <span class="comment">% (m x tn-1) Initial input trajectory</span>
+
+<span class="comment">% Dynamics</span>
+f = @(x_,u_,t_) u_; <span class="comment">% (n x tn) State dynamics (i.e. xDot)</span>
+dfdx = @(x_,u_,t_) zeros(size(x_,1),size(x_,1),size(t_,2)); <span class="comment">% (n x n x tn) State dynamics partial to state</span>
+dfdu = @(x_,u_,t_) ones(size(x_,1),size(u_,1),size(t_,2)); <span class="comment">% (n x m x tn) State dynamics partial to input</span>
+
+<span class="comment">% Cost</span>
+rho = 100; <span class="comment">% (1 x 1) Final cost weight</span>
+L = @(x_,u_,t_) u_.^2; <span class="comment">% (1 x tn) Instantaneous cost</span>
+dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); <span class="comment">% (1 x n x tn) Instantaneous cost partial to state</span>
+dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); <span class="comment">% (1 x m x tn) Instantaneous cost partial to input</span>
+Psi = @(xf_,tf_) rho*(xf_ - xBar)'*(xf_ - xBar); <span class="comment">% (1 x 1) Final cost</span>
+dPsidx = @(xf_,tf_) 2*rho*(xf_ - xBar)'; <span class="comment">% (1 x n) Final cost partial to final state</span>
+
+<span class="comment">% Armijo parameters</span>
+alpha = 0.25;
+beta = 0.75;
+
+<span class="comment">% Stopping condition</span>
+stop = @(x_,u_,t_,k_) k_ &gt;= 10;
+</pre><h2>Single Integrator - Solve<a name="4"></a></h2><pre class="codeinput">[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,<span class="string">'armijoParams'</span>,[alpha beta],<span class="string">'stoppingCondition'</span>,stop);
+
+<span class="comment">% Initial and final cost</span>
+xI = optimal.simStateForward(f,x0,uI,t);
+JI = J(xI,uI,t);
+JF = J(x,u,t);
+</pre><h2>Single Integrator - Display Results<a name="5"></a></h2><pre class="codeinput">fprintf(<span class="string">'Initial cost: %.3f\n'</span>,JI);
+fprintf(<span class="string">'Final cost: %.3f\n'</span>,JF);
+fprintf(<span class="string">'Final state: %.3f\n'</span>,x(end));
+
+<span class="comment">% Plot</span>
+figure(1)
+set(1,<span class="string">'Position'</span>,[0 0 800 430])
+subplot(2,1,1)
+plot(t(1:end-1),uI)
+title([<span class="string">'Initial Input Trajectory (Cost: '</span> num2str(JI) <span class="string">')'</span>])
+ylabel(<span class="string">'Input'</span>)
+grid <span class="string">on</span>
+subplot(2,1,2)
+plot(t,xI)
+hold <span class="string">on</span>
+plot(t,repmat(xBar,size(t)),<span class="string">'r.'</span>)
+hold <span class="string">off</span>
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title(<span class="string">'Initial State Trajectory'</span>)
+ylabel(<span class="string">'State'</span>)
+grid <span class="string">on</span>
+
+figure(2)
+set(2,<span class="string">'Position'</span>,[100 100 800 700])
+subplot(3,1,1)
+plot(t(1:end-1),u)
+title([<span class="string">'Final Input Trajectory (Cost: '</span> num2str(JF) <span class="string">')'</span>])
+ylabel(<span class="string">'Input'</span>)
+grid <span class="string">on</span>
+subplot(3,1,2)
+plot(t,x)
+hold <span class="string">on</span>
+plot(t,repmat(xBar,size(t)),<span class="string">'r.'</span>)
+hold <span class="string">off</span>
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title(<span class="string">'Final State Trajectory'</span>)
+ylabel(<span class="string">'State'</span>)
+grid <span class="string">on</span>
+subplot(3,1,3)
+plot(t,lambda)
+title(<span class="string">'Final Costate Trajectory'</span>)
+xlabel(<span class="string">'Time'</span>)
+ylabel(<span class="string">'Costate'</span>)
+grid <span class="string">on</span>
+
+figure(3)
+set(3,<span class="string">'Position'</span>,[200 200 800 700])
+subplot(2,1,1)
+plot(JTape)
+xlim([1 numel(gammaTape)])
+title(<span class="string">'Cost Profile'</span>)
+ylabel(<span class="string">'Cost'</span>)
+grid <span class="string">on</span>
+subplot(2,1,2)
+plot(gammaTape)
+xlim([1 numel(gammaTape)])
+title(<span class="string">'Step Size Profile'</span>)
+xlabel(<span class="string">'Iteration'</span>)
+ylabel(<span class="string">'Step Size'</span>)
+grid <span class="string">on</span>
+
+<span class="keyword">try</span> <span class="comment">%#ok&lt;TRYNC&gt;</span>
+    figBoldify
+<span class="keyword">end</span>
+</pre><pre class="codeoutput">Initial cost: 10000.000
+Final cost: 10.014
+Final state: 9.975
+</pre><img vspace="5" hspace="5" src="bolzaExamples_01.png" alt=""> <img vspace="5" hspace="5" src="bolzaExamples_02.png" alt=""> <img vspace="5" hspace="5" src="bolzaExamples_03.png" alt=""> <pre class="codeinput"><span class="keyword">end</span>
+
+
+<span class="keyword">if</span> 0
+</pre><h2>Unicycle Example<a name="7"></a></h2><p>In this example the <tt>optimal.bolza</tt> function is used to solve the following problem:</p><p><img src="bolzaExamples_eq35471.png" alt="$$\min_u \int_0^{10} u' u dt + 100 \left(x - \left[ \matrix{10 \cr 10 \cr&#xA;\pi} \right] \right)^2~s.t.~ \dot{x} = \left[ \matrix{v \cos{\theta} \cr&#xA;v \sin{\theta} \cr \omega} \right],~x(0) = 0$$"></p><p>where</p><p><img src="bolzaExamples_eq41264.png" alt="$$x = \left[ \matrix{X \cr Y \cr \theta} \right],~ u = \left[ \matrix{v&#xA;\cr \omega} \right]$$"></p><h2>Unicycle - Initialize<a name="8"></a></h2><pre class="codeinput"><span class="comment">% Time - parameters</span>
+ts = .1; <span class="comment">% (1 x 1) Time step size</span>
+t0 = 0; <span class="comment">% (1 x 1) Initial time</span>
+tf = 10; <span class="comment">% (1 x 1) Final time</span>
+<span class="comment">% Time - variables</span>
+t = t0:ts:tf; <span class="comment">% (1 x tn) Time vector record for all time</span>
+tn = length(t); <span class="comment">% (1 x 1) Number of time samples</span>
+
+<span class="comment">% State - parameters</span>
+x0 = [0,0,0]'; <span class="comment">% (n x 1) Initial state</span>
+xBar = [10,0,0]'; <span class="comment">% (n x 1) Desired state</span>
+
+<span class="comment">% Input - parameters</span>
+m = 2; <span class="comment">% (1 x 1) Dimension of the input</span>
+<span class="comment">% Input - variables</span>
+uI = zeros(m,tn-1); <span class="comment">% (m x tn-1) Initial input trajectory</span>
+
+<span class="comment">% Dynamics</span>
+f = @(x_,u_,t_) [<span class="keyword">...</span>
+    u_(1,:) .* cos(x_(3,:));<span class="keyword">...</span>
+    u_(1,:) .* sin(x_(3,:));<span class="keyword">...</span>
+    u_(2,:)]; <span class="comment">% (n x tn) State dynamics (i.e. xDot)</span>
+dfdx = @(x_,u_,t_) cat(2,<span class="keyword">...</span>
+    zeros(3,2,size(t_,2)),<span class="keyword">...</span>
+    permute([-u_(1,:).*sin(x_(3,:));u_(1,:).*cos(x_(3,:));zeros(1,size(t_,2))],[1 3 2]) ); <span class="comment">% (n x n x tn) State dynamics partial to state</span>
+dfdu = @(x_,u_,t_) cat(2,<span class="keyword">...</span>
+    permute([cos(x_(3,:));sin(x_(3,:));zeros(1,size(t_,2))],[1 3 2]),<span class="keyword">...</span>
+    permute([zeros(1,size(t_,2));zeros(1,size(t_,2));ones(1,size(t_,2))],[1 3 2])); <span class="comment">% (n x m x tn) State dynamics partial to input</span>
+
+<span class="comment">% Cost</span>
+rho = 100; <span class="comment">% (1 x 1) Final cost weight</span>
+L = @(x_,u_,t_) sum(u_.*u_,1); <span class="comment">% (1 x tn) Instantaneous cost</span>
+dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); <span class="comment">% (1 x n x tn) Instantaneous cost partial to state</span>
+dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); <span class="comment">% (1 x m x tn) Instantaneous cost partial to input</span>
+Psi = @(xf_,tf_) rho*(xf_(1:2) - xBar(1:2))'*(xf_(1:2) - xBar(1:2)); <span class="comment">% (1 x 1) Final cost</span>
+dPsidx = @(xf_,tf_) 2*rho*[(xf_(1:2) - xBar(1:2))' 0]; <span class="comment">% (1 x n) Final cost partial to final state</span>
+
+<span class="comment">% Armijo parameters</span>
+alpha = 0.25;
+beta = 0.75;
+
+<span class="comment">% Stopping condition</span>
+stop = @(x_,u_,t_,k_) k_ &gt;= 10;
+</pre><h2>Single Integrator - Solve<a name="9"></a></h2><pre class="codeinput">[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,<span class="string">'armijoParams'</span>,[alpha beta],<span class="string">'stoppingCondition'</span>,stop);
+
+<span class="comment">% Initial and final cost</span>
+xI = optimal.simStateForward(f,x0,uI,t);
+JI = J(xI,uI,t);
+JF = J(x,u,t);
+</pre><h2>Single Integrator - Display Results<a name="10"></a></h2><pre class="codeinput">fprintf(<span class="string">'Initial cost: %.3f\n'</span>,JI);
+fprintf(<span class="string">'Final cost: %.3f\n'</span>,JF);
+disp([<span class="string">'Final state: '</span> num2str(x(:,end)',3)]);
+</pre><h2>Plot<a name="11"></a></h2><pre class="codeinput">figure(1)
+set(1,<span class="string">'Position'</span>,[0 0 800 430])
+subplot(2,1,1)
+plot(t(1:end-1),uI)
+title([<span class="string">'Initial Input Trajectory (Cost: '</span> num2str(JI) <span class="string">')'</span>])
+ylabel(<span class="string">'Input'</span>)
+grid <span class="string">on</span>
+subplot(2,1,2)
+plot(t,xI)
+hold <span class="string">on</span>
+plot(t,repmat(xBar,[1 size(t,2)]),<span class="string">'.'</span>)
+hold <span class="string">off</span>
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title(<span class="string">'Initial State Trajectory'</span>)
+ylabel(<span class="string">'State'</span>)
+grid <span class="string">on</span>
+
+figure(2)
+set(2,<span class="string">'Position'</span>,[100 100 800 700])
+subplot(3,1,1)
+plot(t(1:end-1),u)
+title([<span class="string">'Final Input Trajectory (Cost: '</span> num2str(JF) <span class="string">')'</span>])
+ylabel(<span class="string">'Input'</span>)
+grid <span class="string">on</span>
+subplot(3,1,2)
+plot(t,x)
+hold <span class="string">on</span>
+plot(t,repmat(xBar,[1 size(t,2)]),<span class="string">'.'</span>)
+hold <span class="string">off</span>
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title(<span class="string">'Final State Trajectory'</span>)
+ylabel(<span class="string">'State'</span>)
+grid <span class="string">on</span>
+subplot(3,1,3)
+plot(t,lambda)
+title(<span class="string">'Final Costate Trajectory'</span>)
+xlabel(<span class="string">'Time'</span>)
+ylabel(<span class="string">'Costate'</span>)
+grid <span class="string">on</span>
+
+figure(3)
+set(3,<span class="string">'Position'</span>,[200 200 800 700])
+subplot(2,1,1)
+plot(JTape)
+xlim([1 numel(gammaTape)])
+title(<span class="string">'Cost Profile'</span>)
+ylabel(<span class="string">'Cost'</span>)
+grid <span class="string">on</span>
+subplot(2,1,2)
+plot(gammaTape)
+xlim([1 numel(gammaTape)])
+title(<span class="string">'Step Size Profile'</span>)
+xlabel(<span class="string">'Iteration'</span>)
+ylabel(<span class="string">'Step Size'</span>)
+grid <span class="string">on</span>
+
+<span class="keyword">try</span> <span class="comment">%#ok&lt;TRYNC&gt;</span>
+    figBoldify
+<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Bolza Examples
+% The |bolzaExamples.m| script is a set of examples illustrating how to use
+% the |optimal.bolza| function. The Bolza problem is defined as
+%
+% $$\min_u \int_{t_0}^{t_f} L(x,u,t) dt + \Psi(x_f,t_f)$$
+% $$s.t.~ \dot{x} = f(x,u,t),~x(0) = x_0$$
+%
+% NECESSARY FILES AND/OR PACKAGES:
+%
+%   +optimal, bolza.m, simStateForward.m
+%
+% AUTHOR:
+%   <http://rowlandoflaherty.com Rowland O'Flaherty>
+%
+% CREATION DATE:
+%   02-MAY-2014
+%
+% MODIFIED DATE:
+%   03-MAY-2014
+
+%% Import
+% Import the |optimal| package.
+import optimal.*
+
+if 1
+%% Single Integrator Example
+% In this example the |optimal.bolza| function is used to solve the
+% following problem:
+%
+% $$\min_u \int_0^{10} u^2 dt + 100(x - 10)^2$$
+% $$s.t.~ \dot{x} = u,~x(0) = 0$$
+
+%% Single Integrator - Initialize
+
+% Time - parameters
+ts = .1; % (1 x 1) Time step size
+t0 = 0; % (1 x 1) Initial time
+tf = 10; % (1 x 1) Final time
+% Time - variables
+t = t0:ts:tf; % (1 x tn) Time vector record for all time
+tn = length(t); % (1 x 1) Number of time samples
+
+% State - parameters
+x0 = 0; % (n x 1) Initial state
+xBar = 10; % (n x 1) Desired state
+
+% Input - parameters
+m = 1; % (1 x 1) Dimension of the input
+% Input - variables
+uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory 
+
+% Dynamics
+f = @(x_,u_,t_) u_; % (n x tn) State dynamics (i.e. xDot)
+dfdx = @(x_,u_,t_) zeros(size(x_,1),size(x_,1),size(t_,2)); % (n x n x tn) State dynamics partial to state
+dfdu = @(x_,u_,t_) ones(size(x_,1),size(u_,1),size(t_,2)); % (n x m x tn) State dynamics partial to input
+
+% Cost
+rho = 100; % (1 x 1) Final cost weight
+L = @(x_,u_,t_) u_.^2; % (1 x tn) Instantaneous cost
+dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); % (1 x n x tn) Instantaneous cost partial to state
+dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); % (1 x m x tn) Instantaneous cost partial to input
+Psi = @(xf_,tf_) rho*(xf_ - xBar)'*(xf_ - xBar); % (1 x 1) Final cost
+dPsidx = @(xf_,tf_) 2*rho*(xf_ - xBar)'; % (1 x n) Final cost partial to final state
+
+% Armijo parameters
+alpha = 0.25;
+beta = 0.75;
+
+% Stopping condition
+stop = @(x_,u_,t_,k_) k_ >= 10;
+
+%% Single Integrator - Solve
+[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta],'stoppingCondition',stop);
+
+% Initial and final cost
+xI = optimal.simStateForward(f,x0,uI,t);
+JI = J(xI,uI,t);
+JF = J(x,u,t);
+
+%% Single Integrator - Display Results
+fprintf('Initial cost: %.3f\n',JI);
+fprintf('Final cost: %.3f\n',JF);
+fprintf('Final state: %.3f\n',x(end));
+
+% Plot
+figure(1)
+set(1,'Position',[0 0 800 430])
+subplot(2,1,1)
+plot(t(1:end-1),uI)
+title(['Initial Input Trajectory (Cost: ' num2str(JI) ')'])
+ylabel('Input')
+grid on
+subplot(2,1,2)
+plot(t,xI)
+hold on
+plot(t,repmat(xBar,size(t)),'r.')
+hold off
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title('Initial State Trajectory')
+ylabel('State')
+grid on
+
+figure(2)
+set(2,'Position',[100 100 800 700])
+subplot(3,1,1)
+plot(t(1:end-1),u)
+title(['Final Input Trajectory (Cost: ' num2str(JF) ')'])
+ylabel('Input')
+grid on
+subplot(3,1,2)
+plot(t,x)
+hold on
+plot(t,repmat(xBar,size(t)),'r.')
+hold off
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title('Final State Trajectory')
+ylabel('State')
+grid on
+subplot(3,1,3)
+plot(t,lambda)
+title('Final Costate Trajectory')
+xlabel('Time')
+ylabel('Costate')
+grid on
+
+figure(3)
+set(3,'Position',[200 200 800 700])
+subplot(2,1,1)
+plot(JTape)
+xlim([1 numel(gammaTape)])
+title('Cost Profile')
+ylabel('Cost')
+grid on
+subplot(2,1,2)
+plot(gammaTape)
+xlim([1 numel(gammaTape)])
+title('Step Size Profile')
+xlabel('Iteration')
+ylabel('Step Size')
+grid on
+
+try %#ok<TRYNC>
+    figBoldify
+end
+end
+
+
+if 0
+%% Unicycle Example
+% In this example the |optimal.bolza| function is used to solve the
+% following problem:
+%
+% $$\min_u \int_0^{10} u' u dt + 100 \left(x - \left[ \matrix{10 \cr 10 \cr
+% \pi} \right] \right)^2~s.t.~ \dot{x} = \left[ \matrix{v \cos{\theta} \cr
+% v \sin{\theta} \cr \omega} \right],~x(0) = 0$$
+%
+% where
+%
+% $$x = \left[ \matrix{X \cr Y \cr \theta} \right],~ u = \left[ \matrix{v
+% \cr \omega} \right]$$
+
+%% Unicycle - Initialize
+
+% Time - parameters
+ts = .1; % (1 x 1) Time step size
+t0 = 0; % (1 x 1) Initial time
+tf = 10; % (1 x 1) Final time
+% Time - variables
+t = t0:ts:tf; % (1 x tn) Time vector record for all time
+tn = length(t); % (1 x 1) Number of time samples
+
+% State - parameters
+x0 = [0,0,0]'; % (n x 1) Initial state
+xBar = [10,0,0]'; % (n x 1) Desired state
+
+% Input - parameters
+m = 2; % (1 x 1) Dimension of the input
+% Input - variables
+uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory 
+
+% Dynamics
+f = @(x_,u_,t_) [...
+    u_(1,:) .* cos(x_(3,:));...
+    u_(1,:) .* sin(x_(3,:));...
+    u_(2,:)]; % (n x tn) State dynamics (i.e. xDot)
+dfdx = @(x_,u_,t_) cat(2,...
+    zeros(3,2,size(t_,2)),...
+    permute([-u_(1,:).*sin(x_(3,:));u_(1,:).*cos(x_(3,:));zeros(1,size(t_,2))],[1 3 2]) ); % (n x n x tn) State dynamics partial to state
+dfdu = @(x_,u_,t_) cat(2,...
+    permute([cos(x_(3,:));sin(x_(3,:));zeros(1,size(t_,2))],[1 3 2]),...
+    permute([zeros(1,size(t_,2));zeros(1,size(t_,2));ones(1,size(t_,2))],[1 3 2])); % (n x m x tn) State dynamics partial to input
+
+% Cost
+rho = 100; % (1 x 1) Final cost weight
+L = @(x_,u_,t_) sum(u_.*u_,1); % (1 x tn) Instantaneous cost
+dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); % (1 x n x tn) Instantaneous cost partial to state
+dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); % (1 x m x tn) Instantaneous cost partial to input
+Psi = @(xf_,tf_) rho*(xf_(1:2) - xBar(1:2))'*(xf_(1:2) - xBar(1:2)); % (1 x 1) Final cost
+dPsidx = @(xf_,tf_) 2*rho*[(xf_(1:2) - xBar(1:2))' 0]; % (1 x n) Final cost partial to final state
+
+% Armijo parameters
+alpha = 0.25;
+beta = 0.75;
+
+% Stopping condition
+stop = @(x_,u_,t_,k_) k_ >= 10;
+
+%% Single Integrator - Solve
+[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta],'stoppingCondition',stop);
+
+% Initial and final cost
+xI = optimal.simStateForward(f,x0,uI,t);
+JI = J(xI,uI,t);
+JF = J(x,u,t);
+
+%% Single Integrator - Display Results
+fprintf('Initial cost: %.3f\n',JI);
+fprintf('Final cost: %.3f\n',JF);
+disp(['Final state: ' num2str(x(:,end)',3)]);
+
+%% Plot
+figure(1)
+set(1,'Position',[0 0 800 430])
+subplot(2,1,1)
+plot(t(1:end-1),uI)
+title(['Initial Input Trajectory (Cost: ' num2str(JI) ')'])
+ylabel('Input')
+grid on
+subplot(2,1,2)
+plot(t,xI)
+hold on
+plot(t,repmat(xBar,[1 size(t,2)]),'.')
+hold off
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title('Initial State Trajectory')
+ylabel('State')
+grid on
+
+figure(2)
+set(2,'Position',[100 100 800 700])
+subplot(3,1,1)
+plot(t(1:end-1),u)
+title(['Final Input Trajectory (Cost: ' num2str(JF) ')'])
+ylabel('Input')
+grid on
+subplot(3,1,2)
+plot(t,x)
+hold on
+plot(t,repmat(xBar,[1 size(t,2)]),'.')
+hold off
+yMinMax = ylim();
+ylim([yMinMax(1)-1 yMinMax(2)+1])
+title('Final State Trajectory')
+ylabel('State')
+grid on
+subplot(3,1,3)
+plot(t,lambda)
+title('Final Costate Trajectory')
+xlabel('Time')
+ylabel('Costate')
+grid on
+
+figure(3)
+set(3,'Position',[200 200 800 700])
+subplot(2,1,1)
+plot(JTape)
+xlim([1 numel(gammaTape)])
+title('Cost Profile')
+ylabel('Cost')
+grid on
+subplot(2,1,2)
+plot(gammaTape)
+xlim([1 numel(gammaTape)])
+title('Step Size Profile')
+xlabel('Iteration')
+ylabel('Step Size')
+grid on
+
+try %#ok<TRYNC>
+    figBoldify
+end
+
+end
+##### SOURCE END #####
+--></body></html>
