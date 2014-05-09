@@ -299,7 +299,7 @@ while ~stoppingCondition(x,u,t,k)
     xf = x(:,end);
     
     % Simulate costate backward
-    lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,'direction','backward');
+    lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
     
     % Calculate step size
     gamma = optimal.armijo(x,u,lambda,t,f,J,dHdu,alpha,beta);
