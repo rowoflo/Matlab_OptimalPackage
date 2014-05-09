@@ -7,7 +7,7 @@
 %
 % NECESSARY FILES AND/OR PACKAGES:
 %
-%   +optimal, bolza.m, simStateForward.m
+%   +optimal, bolza.m, simState.m
 %
 % AUTHOR:
 %   <http://rowlandoflaherty.com Rowland O'Flaherty>
@@ -21,6 +21,9 @@
 %% Import
 % Import the |optimal| package.
 import optimal.*
+
+%% Set plot parameters
+figSize = [700 375];
 
 if 1
 %% Single Integrator Example
@@ -47,7 +50,8 @@ xBar = 10; % (n x 1) Desired state
 % Input - parameters
 m = 1; % (1 x 1) Dimension of the input
 % Input - variables
-uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory 
+uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory
+% uI = sin(t(1:end-1)); % (m x tn-1) Initial input trajectory
 
 % Dynamics
 f = @(x_,u_,t_) u_; % (n x tn) State dynamics (i.e. xDot)
@@ -73,7 +77,7 @@ stop = @(x_,u_,t_,k_) k_ >= 10;
 [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta],'stoppingCondition',stop);
 
 % Initial and final cost
-xI = optimal.simStateForward(f,x0,uI,t);
+xI = optimal.simState(f,x0,uI,t);
 JI = J(xI,uI,t);
 JF = J(x,u,t);
 
@@ -84,7 +88,7 @@ fprintf('Final state: %.3f\n',x(end));
 
 % Plot
 figure(1)
-set(1,'Position',[0 0 700 375])
+set(1,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(t(1:end-1),uI)
 title(['Initial Input Trajectory (Cost: ' num2str(JI) ')'])
@@ -102,7 +106,7 @@ ylabel('State')
 grid on
 
 figure(2)
-set(2,'Position',[100 100 700 375])
+set(2,'Position',[gcf*[100 100] figSize])
 subplot(3,1,1)
 plot(t(1:end-1),u)
 title(['Final Input Trajectory (Cost: ' num2str(JF) ')'])
@@ -126,7 +130,7 @@ ylabel('Costate')
 grid on
 
 figure(3)
-set(3,'Position',[200 200 700 375])
+set(3,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(JTape)
 xlim([1 numel(gammaTape)])
@@ -178,7 +182,7 @@ xBar = [10,0,0]'; % (n x 1) Desired state
 % Input - parameters
 m = 2; % (1 x 1) Dimension of the input
 % Input - variables
-uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory 
+uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory
 
 % Dynamics
 f = @(x_,u_,t_) [...
@@ -211,7 +215,7 @@ stop = @(x_,u_,t_,k_) k_ >= 10;
 [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta],'stoppingCondition',stop);
 
 % Initial and final cost
-xI = optimal.simStateForward(f,x0,uI,t);
+xI = optimal.simState(f,x0,uI,t);
 JI = J(xI,uI,t);
 JF = J(x,u,t);
 
@@ -222,7 +226,7 @@ disp(['Final state: ' num2str(x(:,end)',3)]);
 
 %% Plot
 figure(1)
-set(1,'Position',[0 0 800 430])
+set(1,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(t(1:end-1),uI)
 title(['Initial Input Trajectory (Cost: ' num2str(JI) ')'])
@@ -240,7 +244,7 @@ ylabel('State')
 grid on
 
 figure(2)
-set(2,'Position',[100 100 800 700])
+set(2,'Position',[gcf*[100 100] figSize])
 subplot(3,1,1)
 plot(t(1:end-1),u)
 title(['Final Input Trajectory (Cost: ' num2str(JF) ')'])
@@ -264,7 +268,7 @@ ylabel('Costate')
 grid on
 
 figure(3)
-set(3,'Position',[200 200 800 700])
+set(3,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(JTape)
 xlim([1 numel(gammaTape)])

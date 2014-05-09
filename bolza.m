@@ -6,8 +6,8 @@ function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,P
 % $$s.t.~ \dot{x} = f(x,u,t),~x(0) = x_0$$
 %
 % SYNTAX:
-%   [x,u,lambda,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx)
-%   [x,u,lambda,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'PropertyName',PropertyValue,...)
+%   [x,u,lambda,JTape,gammaTape] = optimal.bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx)
+%   [x,u,lambda,JTape,gammaTape] = optimal.bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'PropertyName',PropertyValue,...)
 %
 % NOTATION:
 %   n - State dimension.
@@ -162,7 +162,7 @@ function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,P
 % NOTES:
 %
 % NECESSARY FILES:
-%   +optimal, armjo.m, simStateForward.m, simCostateBackward.m
+%   +optimal, armjo.m, simState.m, simCostate.m
 %
 % SEE ALSO: TODO: Add see alsos
 %    relatedFunction1 | relatedFunction2
@@ -288,18 +288,18 @@ JTape = nan;
 gammaTape = nan;
 
 %% Solve
-x = optimal.simStateForward(f,x0,u,t);
+x = optimal.simState(f,x0,u,t);
 k = 0;
 while ~stoppingCondition(x,u,t,k)
     % Increment counter
     k = k + 1;
     
     % Simulate state forward
-    x = optimal.simStateForward(f,x0,u,t);
+    x = optimal.simState(f,x0,u,t);
     xf = x(:,end);
     
     % Simulate costate backward
-    lambda = optimal.simCostateBackward(g,lambdaf(xf),x,u,t);
+    lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,'direction','backward');
     
     % Calculate step size
     gamma = optimal.armijo(x,u,lambda,t,f,J,dHdu,alpha,beta);
@@ -313,7 +313,7 @@ while ~stoppingCondition(x,u,t,k)
     u = u - gamma*dHduTraj;
     
 end
-x = optimal.simStateForward(f,x0,u,t);
+x = optimal.simState(f,x0,u,t);
 
 
 end
