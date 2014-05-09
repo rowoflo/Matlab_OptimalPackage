@@ -272,7 +272,7 @@ assert(isa(stoppingCondition,'function_handle'),...
 
 %% Initialize
 % Hamiltonian
-% H = @(x_,u_,lambda_,t_) L(x_,u_,t_) + sum(lambda_.*f(x_,u_,t_),1); % (1 x 1) Hamiltonian
+H = @(x_,u_,lambda_,t_) L(x_,u_,t_) + sum(lambda_.*f(x_,u_,t_),1); % (1 x 1) Hamiltonian
 dHdx = @(x_,u_,lambda_,t_) dLdx(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 n 1]).*dfdx(x_,u_,t_),1); % (1 x n) Hamiltonian partial to state
 dHdu = @(x_,u_,lambda_,t_) dLdu(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 m 1]).*dfdu(x_,u_,t_),1); % (1 x m) Hamiltonian partial to input
 
@@ -306,16 +306,16 @@ while ~stoppingCondition(x,u,lambda,t,k,dHduT)
     lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
     
     % Calculate step size
-%     gamma = optimal.armijo(x,u,lambda,t,f,J,dHdu,alpha,beta);
-    gamma = .01;
-    
+    gamma = optimal.armijo(x,u,lambda,t,f,g,lambdaf,H,dHdu,alpha,beta);
+%     gamma = .05;
+
     % Update records
     JTape(k) = J(x,u,t);
     gammaTape(k) = gamma;
     
     % Update input
     dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-    u = u - gamma*dHduT;
+    u = u - gamma.*dHduT;
     
 end
 x = optimal.simState(f,x0,u,t);
@@ -325,8 +325,8 @@ end
 
 function stopFlag = stopDefault(~,~,~,~,k,dHduT)
 norm2dHduT = sum(sum(dHduT.*dHduT,1))
-% stopFlag = norm2dHduT < 1;
-stopFlag = k > 10;
+stopFlag = norm2dHduT < 100;
+% stopFlag = k > 50;
 end
 
 

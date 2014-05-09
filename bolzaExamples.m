@@ -50,8 +50,8 @@ xBar = 10; % (n x 1) Desired state
 % Input - parameters
 m = 1; % (1 x 1) Dimension of the input
 % Input - variables
-uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory
-% uI = sin(t(1:end-1)); % (m x tn-1) Initial input trajectory
+% uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory
+uI = sin(t(1:end-1)); % (m x tn-1) Initial input trajectory
 
 % Dynamics
 f = @(x_,u_,t_) u_; % (n x tn) State dynamics (i.e. xDot)
@@ -67,8 +67,8 @@ Psi = @(xf_,tf_) rho*(xf_ - xBar)'*(xf_ - xBar); % (1 x 1) Final cost
 dPsidx = @(xf_,tf_) 2*rho*(xf_ - xBar)'; % (1 x n) Final cost partial to final state
 
 % Armijo parameters
-alpha = 0.25;
-beta = 0.75;
+alpha = 0.5;
+beta = 0.5;
 
 % Stopping condition
 stop = @(x_,u_,t_,k_) k_ >= 10;

@@ -1,4 +1,4 @@
-function gamma = armijo(x,u,lambda,t,f,J,dHdu,alpha,beta,varargin)
+function gamma = armijo(x,u,lambda,t,f,g,lambdaf,H,dHdu,alpha,beta,varargin)
 % The "armijo" function calculates an appropriate step size for gradiant
 % descent.
 %
@@ -116,9 +116,9 @@ assert(isa(f,'function_handle'),...
     'optimal:armijo:f',...
     'Input argument "f" must be a function handle.')
 
-assert(isa(J,'function_handle'),...
-    'optimal:armijo:J',...
-    'Input argument "J" must be a function handle.')
+assert(isa(H,'function_handle'),...
+    'optimal:armijo:H',...
+    'Input argument "H" must be a function handle.')
 
 assert(isa(dHdu,'function_handle'),...
     'optimal:armijo:dHdu',...
@@ -153,7 +153,7 @@ for iParam = 1:propargin/2
 end
 
 % Set to default value if necessary
-if ~exist('kappaMax','var'), kappaMax = 30; end
+if ~exist('kappaMax','var'), kappaMax = 10; end
 
 % Check property values for errors
 assert(isnumeric(kappaMax) && isreal(kappaMax) && numel(kappaMax) == 1 && kappaMax > 0 && mod(kappaMax,1) == 0,...
@@ -162,19 +162,23 @@ assert(isnumeric(kappaMax) && isreal(kappaMax) && numel(kappaMax) == 1 && kappaM
 
 %% Initialize
 dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-norm2dHduT = sum(sum(dHduT.*dHduT,1));
 kappa = 0;
-J0 = J(x,u,t);
-J1 = inf;
+H0 = H(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1));
+H1 = inf*ones(size(H0));
 
 %% Calculate step size
-while J1 - J0 > -alpha*beta^kappa*norm2dHduT && kappa < kappaMax
+while any((H1 - H0) > -alpha*beta^kappa*dHduT) && kappa < kappaMax
     gamma = beta^kappa;
     u1 = u - gamma*dHduT;
     x1 = optimal.simState(f,x(:,1),u1,t);
-    J1 = J(x1,u1,t);
+    xf = x1(:,end);
+    lambda1 = optimal.simCostate(g,lambdaf(xf),x1,u1,t,false);
+    H1 = H(x1(:,1:end-1),u1,lambda1(:,1:end-1),t(1:end-1));
     kappa = kappa + 1;
 end
 
+end
 
+function norm2 = sigNorm2(X)
+norm2 = sum(sum(X.*X,1));
 end
