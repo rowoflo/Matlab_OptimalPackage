@@ -119,12 +119,13 @@ function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,P
 %   'stoppingCondition' - (function handle)
 %       Iteration stopping condition
 %       SYNTAX:
-%           stopFlag  = stop(x,u,t,k);
+%           stopFlag  = stop(x,u,t,k,dHduT);
 %       INPUTS:
-%           x - (n x 1 number) Current state.
-%           u - (m x 1 number) Current input.
-%           t - (1 x 1 number) Current time.
+%           x - (n x tn number) Current state trajectory.
+%           u - (m x tn-1 number) Current input trajectory.
+%           t - (1 x tn number) Current time trajectory.
 %           k - (1 x 1 number) Current iteration number.
+%           dHduT - (m x tn-1 number) Current dHdu tranpose trajectory.
 %       OUTPUTS:
 %           stopFlag - (1 x 1 logical) If true the optimization iteration
 %               will stop.
@@ -289,8 +290,11 @@ gammaTape = nan;
 
 %% Solve
 x = optimal.simState(f,x0,u,t);
+xf = x(:,end);
+lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
+dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
 k = 0;
-while ~stoppingCondition(x,u,t,k)
+while ~stoppingCondition(x,u,lambda,t,k,dHduT)
     % Increment counter
     k = k + 1;
     
@@ -302,15 +306,16 @@ while ~stoppingCondition(x,u,t,k)
     lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
     
     % Calculate step size
-    gamma = optimal.armijo(x,u,lambda,t,f,J,dHdu,alpha,beta);
+%     gamma = optimal.armijo(x,u,lambda,t,f,J,dHdu,alpha,beta);
+    gamma = .01;
     
     % Update records
     JTape(k) = J(x,u,t);
     gammaTape(k) = gamma;
     
     % Update input
-    dHduTraj = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-    u = u - gamma*dHduTraj;
+    dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
+    u = u - gamma*dHduT;
     
 end
 x = optimal.simState(f,x0,u,t);
@@ -318,8 +323,10 @@ x = optimal.simState(f,x0,u,t);
 
 end
 
-function stopFlag = stopDefault(~,~,~,k)
-stopFlag = k >= 10;
+function stopFlag = stopDefault(~,~,~,~,k,dHduT)
+norm2dHduT = sum(sum(dHduT.*dHduT,1))
+% stopFlag = norm2dHduT < 1;
+stopFlag = k > 10;
 end
 
 

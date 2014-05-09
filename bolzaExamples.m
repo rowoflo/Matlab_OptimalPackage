@@ -59,7 +59,7 @@ dfdx = @(x_,u_,t_) zeros(size(x_,1),size(x_,1),size(t_,2)); % (n x n x tn) State
 dfdu = @(x_,u_,t_) ones(size(x_,1),size(u_,1),size(t_,2)); % (n x m x tn) State dynamics partial to input
 
 % Cost
-rho = 100; % (1 x 1) Final cost weight
+rho = 1; % (1 x 1) Final cost weight
 L = @(x_,u_,t_) u_.^2; % (1 x tn) Instantaneous cost
 dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); % (1 x n x tn) Instantaneous cost partial to state
 dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); % (1 x m x tn) Instantaneous cost partial to input
@@ -74,7 +74,7 @@ beta = 0.75;
 stop = @(x_,u_,t_,k_) k_ >= 10;
 
 %% Single Integrator - Solve
-[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta],'stoppingCondition',stop);
+[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta]);
 
 % Initial and final cost
 xI = optimal.simState(f,x0,uI,t);

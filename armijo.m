@@ -161,16 +161,16 @@ assert(isnumeric(kappaMax) && isreal(kappaMax) && numel(kappaMax) == 1 && kappaM
     'Property "kappaMax" must be a positive integer.')
 
 %% Initialize
-dHduTraj = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-norm2dHdu = sum(sum(dHduTraj.*dHduTraj,1));
+dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
+norm2dHduT = sum(sum(dHduT.*dHduT,1));
 kappa = 0;
 J0 = J(x,u,t);
 J1 = inf;
 
 %% Calculate step size
-while J1 - J0 > -alpha*beta^kappa*norm2dHdu && kappa < kappaMax
+while J1 - J0 > -alpha*beta^kappa*norm2dHduT && kappa < kappaMax
     gamma = beta^kappa;
-    u1 = u - gamma*dHduTraj;
+    u1 = u - gamma*dHduT;
     x1 = optimal.simState(f,x(:,1),u1,t);
     J1 = J(x1,u1,t);
     kappa = kappa + 1;
