@@ -133,6 +133,12 @@ function [x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,d
 %       OUTPUTS:
 %           stopFlag - (1 x 1 logical) If true the optimization iteration
 %               will stop.
+%
+%   'method' - ('sweep', 'shooting', 'fmin') ['sweep']
+%       Algorithm solution method.
+%
+%   'display' - ('none', 'iter') ['none']
+%       Level of display.
 % 
 % OUTPUTS:
 %   x - (n x tn number) 
@@ -266,6 +272,10 @@ for iParam = 1:propargin/2
             beta = propValues{iParam};
         case lower('stoppingCondition')
             stoppingCondition = propValues{iParam};
+        case lower('method')
+            method = propValues{iParam};
+        case lower('display')
+            displayLevel = propValues{iParam};
         otherwise
             error('optimal:bolza:options',...
               'Option string ''%s'' is not recognized.',propStrs{iParam})
@@ -276,6 +286,8 @@ end
 if ~exist('alpha','var'), alpha = 0.5; end
 if ~exist('beta','var'), beta = 0.5; end
 if ~exist('stoppingCondition','var'), stoppingCondition = @stopDefault; end
+if ~exist('method','var'), method = 'sweep'; end
+if ~exist('displayLevel','var') displayLevel = 'none'; end
 
 % Check property values for errors
 assert(isnumeric(alpha) && isreal(alpha) && numel(alpha) && alpha >= 0 && alpha <= 1,...
@@ -289,6 +301,14 @@ assert(isnumeric(beta) && isreal(beta) && numel(beta) && beta > 0 && beta < 1,..
 assert(isa(stoppingCondition,'function_handle'),...
     'optimal:bolza:stoppingCondition',...
     'Property "stoppingCondition" must be a function handle.')
+
+assert(ismember(method,{'sweep','shooting','fmin'}),...
+    'optimal:bolza;method',...
+    'Property "method" must be either ''sweep'', ''shooting'', ''fmin''.')
+
+assert(ismember(displayLevel,{'none','iter'}),...
+    'optimal:bolza;displayLevel',...
+    'Property "displayLevel" must be either ''none'', ''iter''.')
 
 %% Initialize
 % Hamiltonian
@@ -319,28 +339,87 @@ JTape = nan;
 gammaTape = nan;
 
 %% Solve
-while ~stoppingCondition(x,u,lambda,t,k,dHduT)
-    % Increment counter
-    k = k + 1;
-    
-    % Simulate state forward
-    x = optimal.simState(f,x0,u,t);
-    xf = x(:,end);
-    
-    % Simulate costate backward
-    lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
-    
-    % Calculate step size
-    gamma = optimal.armijo(x,u,lambda,t,f,g,lambdaf,H,dHdu,alpha,beta);
-
-    % Update records
-    JTape(k) = J(x,u,t);
-    gammaTape(k) = mean(gamma(:));
-    
-    % Update input
-    dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-    u = u - repmat(gamma,[m,1]).*dHduT;
-    
+dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
+dHduTnorm2Init = sum(dHduT(:).^2);
+JInit = J(x,u,t);
+switch method
+    case 'sweep'
+        while ~stoppingCondition(x,u,lambda,t,k,dHduT)
+            % Increment counter
+            k = k + 1;
+            
+            % Simulate state forward
+            x = optimal.simState(f,x0,u,t);
+            xf = x(:,end);
+            
+            % Simulate costate backward
+            lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
+            
+            % Calculate step size
+            gamma = optimal.armijo(x,u,lambda,t,f,g,lambdaf,H,dHdu,alpha,beta);
+            
+            % Update records
+            JTape(k) = J(x,u,t);
+            gammaTape(k) = mean(gamma(:));
+            
+            % Update input
+            dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
+            dHduTnomr2 = sum(dHduT(:).^2);
+            
+            if JTape(k) == inf || isnan(dHduTnomr2) || (JTape(k) > JInit && k >= 10)
+                fprintf('Unable to converge. %.3f\n\n',dHduTnomr2)
+                break
+            end
+          
+            u = u - repmat(gamma,[m,1]).*dHduT;
+            
+            
+            switch displayLevel
+                case 'iter'
+                    fprintf('%d\tCost: %.3f\tdHdu Norm: %.3f\n',k,JTape(k),sum(dHduT(:).^2))
+            end
+        end
+        
+    case 'shooting'
+        gamma = .1;
+        xBar = fminsearch(@(x_) Psi(x_,t(end)),x(end));
+        lambdaEps = 0.1;
+        lambda0i = zeros(n,n+1);
+        lambda0i(:,2:end) = repmat(lambda0i(:,1),1,n) + diag(lambdaEps*ones(n,1));
+        lambdaD = nan(n,tn);
+        xD = nan(n,tn-1);
+        ui = nan(n,tn-1);
+        G = @(lambdaf_) (lambdaf_ - lambdaf(xBar))'*(lambdaf_ - lambdaf(xBar));
+        Gi = nan(1,n+1);
+        while ~stoppingCondition(x,u,lambda,t,k,dHduT)
+            % Increment counter
+            k = k + 1;
+            
+            % Simulate forward
+            for i = (n+1):-1:1
+                lambda(:,1) = lambda0i(:,i);
+                for j = 1:tn-1
+                    ts = t(j+1) - t(j);
+                    ui(:,j) = fminsearch(@(u_) dHdu(x(:,j),u_,lambda(:,j),t(j))'*dHdu(x(:,j),u_,lambda(:,j),t(j)), u(:,j));
+                    xD(:,j) = f(x(:,j),ui(:,j),t(j));
+                    x(:,j+1) = x(:,j) + xD(:,j)*ts;
+                    lambdaD(:,j) = g(x(:,j),ui(:,j),lambda(:,j),t(j));
+                    lambda(:,j+1) = lambda(:,j) + lambdaD(:,j)*ts;
+                end
+                Gi(i) = G(lambda(:,end));
+            end
+            u = ui;
+            dGdlambda0 = (Gi(2:end) - Gi(1)) / lambdaEps;
+            lambda0i(:,1) = lambda0i(:,1) - gamma*dGdlambda0';
+            lambda0i(:,2:end) = repmat(lambda0i(:,1),1,n) + diag(lambdaEps*ones(n,1));
+            
+        end
+        
+    case 'fmin'
+        options = optimset('Display','iter');
+        fun = @(u_) norm2dHdu(u_,m,tn,x0,t,f,g,lambdaf,dHdu);
+        u = lsqnonlin(fun,reshape(u,[1 m*(tn-1)]),-1*ones(1,m*(tn-1)),1*ones(1,m*(tn-1)),options);        
+        u = reshape(u,[m,tn-1]);
 end
 x = optimal.simState(f,x0,u,t);
 
@@ -350,6 +429,14 @@ function stopFlag = stopDefault(~,~,~,~,k,~)
 % norm2dHduT = sum(sum(dHduT.*dHduT,1));
 % stopFlag = norm2dHduT < size(dHduT,2)/10 | k >= 10;
 stopFlag = k >= 10;
+end
+
+function value = norm2dHdu(u,m,tn,x0,t,f,g,lambdaf,dHdu)
+u = reshape(u,[m,tn-1]);
+x = optimal.simState(f,x0,u,t);
+xf = x(:,end);
+lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
+value = repmat(sum(permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]).^2,1),1,m);
 end
 
 

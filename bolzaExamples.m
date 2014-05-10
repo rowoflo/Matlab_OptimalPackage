@@ -25,7 +25,7 @@ import optimal.*
 %% Set plot parameters
 figSize = [700 375];
 
-if 1
+if 0
 %% Single Integrator Example
 % In this example the |optimal.bolza| function is used to solve the
 % following problem:
@@ -76,7 +76,7 @@ stop = @(x_,u_,lambda_,t_,k_,dHduT_) k_ >= 10;
 
 %% Single Integrator - Solve
 tic
-[x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoAlpha',alpha,'armijoBeta',beta,'stoppingCondition',stop);
+[x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoAlpha',alpha,'armijoBeta',beta,'stoppingCondition',stop,'method','sweep');
 toc
 
 % Initial and final cost
@@ -134,21 +134,23 @@ xlabel('Time')
 ylabel('Costate')
 grid on
 
-figure(3)
-% set(3,'Position',[gcf*[100 100] figSize])
-subplot(2,1,1)
-plot(JTape)
-xlim([1 numel(gammaTape)])
-title('Cost Profile')
-ylabel('Cost')
-grid on
-subplot(2,1,2)
-plot(gammaTape)
-xlim([1 numel(gammaTape)])
-title('Step Size Profile')
-xlabel('Iteration')
-ylabel('Step Size')
-grid on
+if numel(JTape) >= 2
+    figure(3)
+    % set(3,'Position',[gcf*[100 100] figSize])
+    subplot(2,1,1)
+    plot(JTape)
+    xlim([1 numel(gammaTape)])
+    title('Cost Profile')
+    ylabel('Cost')
+    grid on
+    subplot(2,1,2)
+    plot(gammaTape)
+    xlim([1 numel(gammaTape)])
+    title('Step Size Profile')
+    xlabel('Iteration')
+    ylabel('Step Size')
+    grid on
+end
 
 try %#ok<TRYNC>
     figBoldify
@@ -156,7 +158,7 @@ end
 end
 
 
-if 0
+if 1
 %% Unicycle Example
 % In this example the |optimal.bolza| function is used to solve the
 % following problem:
@@ -182,7 +184,7 @@ tn = length(t); % (1 x 1) Number of time samples
 
 % State - parameters
 x0 = [0,0,0]'; % (n x 1) Initial state
-xBar = [10,10,pi+pi/4]'; % (n x 1) Desired state
+xBar = [-10,0,0]'; % (n x 1) Desired state
 
 % Input - parameters
 m = 2; % (1 x 1) Dimension of the input
@@ -219,28 +221,31 @@ dfdu = @(x_,u_,t_) cat(2,...
 
 % Cost
 rho = 1; % (1 x 1) Final cost weight
-L = @(x_,u_,t_) sum(u_.*u_,1); % (1 x tn) Instantaneous cost
+R = diag([1 100]);
+L = @(x_,u_,t_) sum(u_.*(R*u_),1); % (1 x tn) Instantaneous cost
 dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); % (1 x n x tn) Instantaneous cost partial to state
-dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); % (1 x m x tn) Instantaneous cost partial to input
+dLdu = @(x_,u_,t_) 2*permute(R*u_,[3,1,2]); % (1 x m x tn) Instantaneous cost partial to input
 Psi = @(xf_,tf_) rho*(xf_ - xBar)'*(xf_ - xBar); % (1 x 1) Final cost
 dPsidx = @(xf_,tf_) 2*rho*(xf_ - xBar)'; % (1 x n) Final cost partial to final state
 
 % Armijo parameters
 alpha = 0.5;
-beta = 0.1;
+beta = 0.2;
 
 % Stopping condition
-stop = @(x_,u_,lambda_,t_,k_,dHduT_) k_ >= 30;
+stop = @(x_,u_,lambda_,t_,k_,dHduT_) sum(dHduT_(:).^2) < 10 || k_ >= 100;
 
 %% Single Integrator - Solve
 tic
-[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoAlpha',alpha,'armijoBeta',beta,'stoppingCondition',stop);
+[x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,...
+    'armijoAlpha',alpha,'armijoBeta',beta,'stoppingCondition',stop,'method','sweep','display','iter');
 toc
 
 % Initial and final cost
 xI = optimal.simState(f,x0,uI,t);
 JI = J(xI,uI,t);
 JF = J(x,u,t);
+dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
 
 %% Single Integrator - Display Results
 fprintf('Number of iterations: %d\n',numel(JTape));
@@ -293,21 +298,23 @@ xlabel('Time')
 ylabel('Costate')
 grid on
 
-figure(3)
-% set(3,'Position',[gcf*[100 100] figSize])
-subplot(2,1,1)
-plot(JTape)
-xlim([1 numel(gammaTape)])
-title('Cost Profile')
-ylabel('Cost')
-grid on
-subplot(2,1,2)
-plot(gammaTape)
-xlim([1 numel(gammaTape)])
-title('Step Size Profile')
-xlabel('Iteration')
-ylabel('Step Size')
-grid on
+if numel(JTape) >= 2
+    figure(3)
+    % set(3,'Position',[gcf*[100 100] figSize])
+    subplot(2,1,1)
+    plot(JTape)
+    xlim([1 numel(gammaTape)])
+    title('Cost Profile')
+    ylabel('Cost')
+    grid on
+    subplot(2,1,2)
+    plot(gammaTape)
+    xlim([1 numel(gammaTape)])
+    title('Step Size Profile')
+    xlabel('Iteration')
+    ylabel('Step Size')
+    grid on
+end
 
 try %#ok<TRYNC>
     figBoldify

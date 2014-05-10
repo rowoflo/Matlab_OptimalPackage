@@ -71,10 +71,10 @@ if forward
     end
 else
     x(:,tn) = x0;
-    for k = 1:tn-1
-        xD(:,k) = f(x(:,k),u(:,k),t(k));
+    for k = tn:-1:2
+        xD(:,k) = f(x(:,k),u(:,k-1),t(k));
         ts = t(k) - t(k-1);
-        x(:,k+1) = x(:,k) - xD(:,k)*ts;
+        x(:,k-1) = x(:,k) - xD(:,k)*ts;
     end
 end
 
