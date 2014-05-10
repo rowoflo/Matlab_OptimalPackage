@@ -107,6 +107,7 @@ n = size(x,1);
 assert(isnumeric(u) && numel(size(u)) == 2 && size(u,2) == tn-1,...
     'optimal:armijo:u',...
     'Input argument "u" must be a matrix with a length of %d.',tn-1)
+m = size(u,1);
 
 assert(isnumeric(lambda) && isequal(size(lambda),[n,tn]),...
     'optimal:armijo:lambda',...
@@ -128,7 +129,7 @@ assert(isnumeric(alpha) && isreal(alpha) && numel(alpha) == 1 && alpha >= 0 && a
     'optimal:armijo:alpha',...
     'Input argument "alpha" must be a number between 0 and 1.')
 
-assert(isnumeric(beta) && isreal(beta) && numel(beta) == 1 && beta >= 0 && beta <= 1,...
+assert(isnumeric(beta) && isreal(beta) && numel(beta) == 1 && beta >= 0 && beta < 1,...
     'optimal:armijo:beta',...
     'Input argument "beta" must be a number between 0 and 1.')
 
@@ -162,23 +163,23 @@ assert(isnumeric(kappaMax) && isreal(kappaMax) && numel(kappaMax) == 1 && kappaM
 
 %% Initialize
 dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-kappa = 0;
+dHduTnorm2 = sum(dHduT.*dHduT,1);
+kappa = 1;
 H0 = H(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1));
 H1 = inf*ones(size(H0));
+gamma = ones(1,tn-1);
 
 %% Calculate step size
-while any((H1 - H0) > -alpha*beta^kappa*dHduT) && kappa < kappaMax
-    gamma = beta^kappa;
-    u1 = u - gamma*dHduT;
+gI = (H1 - H0) > -alpha*beta^kappa*dHduTnorm2;
+while any(gI(:)) && kappa < kappaMax
+    gamma(gI) = beta^kappa;
+    u1 = u - repmat(gamma,[m,1]).*dHduT;
     x1 = optimal.simState(f,x(:,1),u1,t);
     xf = x1(:,end);
     lambda1 = optimal.simCostate(g,lambdaf(xf),x1,u1,t,false);
     H1 = H(x1(:,1:end-1),u1,lambda1(:,1:end-1),t(1:end-1));
     kappa = kappa + 1;
+    gI = (H1 - H0) > -alpha*beta^kappa*dHduTnorm2;
 end
 
-end
-
-function norm2 = sigNorm2(X)
-norm2 = sum(sum(X.*X,1));
 end

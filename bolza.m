@@ -1,4 +1,4 @@
-function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,varargin)
+function [x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,varargin)
 % The "bolza" function solves the Bolza optimal control problem. The Bolza
 % problem is defined as
 %
@@ -6,8 +6,8 @@ function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,P
 % $$s.t.~ \dot{x} = f(x,u,t),~x(0) = x_0$$
 %
 % SYNTAX:
-%   [x,u,lambda,JTape,gammaTape] = optimal.bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx)
-%   [x,u,lambda,JTape,gammaTape] = optimal.bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'PropertyName',PropertyValue,...)
+%   [x,u,lambda,J,dHdu,JTape,gammaTape] = optimal.bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx)
+%   [x,u,lambda,J,dHdu,JTape,gammaTape] = optimal.bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'PropertyName',PropertyValue,...)
 %
 % NOTATION:
 %   n - State dimension.
@@ -113,8 +113,12 @@ function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,P
 %           
 %
 % PROPERTIES:
-%   'armijoParams' - (1 x 2 0<=number<=1) [ [0.5 0.5] ]
-%       Armijo parameters [alpha beta].
+%   'armijoAlpha' - (1 x 1 0<=number<=1) [0.5]
+%       Armijo alpha parameter. Aggresion on change in cost.
+%
+%   'armijoBeta' - (1 x 1 0<number<1) [0.5]
+%       Armijo beta parameter. Step size controller. If output blows up try
+%       lowering this value.
 %
 %   'stoppingCondition' - (function handle)
 %       Iteration stopping condition
@@ -150,6 +154,17 @@ function [x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,dLdu,P
 %           t - (1 x tn number) Time.
 %       OUTPUTS:
 %           C - (1 x 1 number) Trajectory cost.
+%
+%   dHdu - (function handle)
+%       Hamiltonian partial to input.
+%       SYNTAX:
+%           hu  = dHdu(x,u,t);
+%       INPUTS:
+%           x - (n x tn number) State.
+%           u - (m x tn number) Input.
+%           t - (1 x tn number) Time.
+%       OUTPUTS:
+%           hu - (1 x m x tn number) Hamiltonian partial to input.
 %
 %   JTape - (1 x kn number)
 %       History of cost verse iteration number.
@@ -245,8 +260,10 @@ propValues = varargin(2:2:propargin);
 
 for iParam = 1:propargin/2
     switch lower(propStrs{iParam})
-        case lower('armijoParams')
-            armijoParams = propValues{iParam};
+        case lower('armijoAlpha')
+            alpha = propValues{iParam};
+        case lower('armijoBeta')
+            beta = propValues{iParam};
         case lower('stoppingCondition')
             stoppingCondition = propValues{iParam};
         otherwise
@@ -256,15 +273,18 @@ for iParam = 1:propargin/2
 end
 
 % Set to default value if necessary
-if ~exist('armijoParams','var'), armijoParams = [0.5 0.5]; end
+if ~exist('alpha','var'), alpha = 0.5; end
+if ~exist('beta','var'), beta = 0.5; end
 if ~exist('stoppingCondition','var'), stoppingCondition = @stopDefault; end
 
 % Check property values for errors
-assert(isnumeric(armijoParams) && isreal(armijoParams) && length(armijoParams) == 2,...
-    'optimal:bolza:armijoParams',...
-    'Property "armijoParams" must be a 2 element vector.')
-alpha = armijoParams(1);
-beta = armijoParams(2);
+assert(isnumeric(alpha) && isreal(alpha) && numel(alpha) && alpha >= 0 && alpha <= 1,...
+    'optimal:bolza:armijoAlpha',...
+    'Property "armijoAlpha" must be a number between 0 and 1.')
+
+assert(isnumeric(beta) && isreal(beta) && numel(beta) && beta > 0 && beta < 1,...
+    'optimal:bolza:armijoBeta',...
+    'Property "armijoBeta" must be a number between 0 and 1.')
 
 assert(isa(stoppingCondition,'function_handle'),...
     'optimal:bolza:stoppingCondition',...
@@ -274,26 +294,31 @@ assert(isa(stoppingCondition,'function_handle'),...
 % Hamiltonian
 H = @(x_,u_,lambda_,t_) L(x_,u_,t_) + sum(lambda_.*f(x_,u_,t_),1); % (1 x 1) Hamiltonian
 dHdx = @(x_,u_,lambda_,t_) dLdx(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 n 1]).*dfdx(x_,u_,t_),1); % (1 x n) Hamiltonian partial to state
-dHdu = @(x_,u_,lambda_,t_) dLdu(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 m 1]).*dfdu(x_,u_,t_),1); % (1 x m) Hamiltonian partial to input
+
+% State
+x = optimal.simState(f,x0,u,t); % (n x tn) State trajectory
+xf = x(:,end); % (n x 1) Final state
 
 % Costate
-lambda = nan(n,tn); % (n x tn) Costate vector record
 lambdaf = @(xf_) dPsidx(xf_)'; % (n x 1) Costate at final time
 g = @(x_,u_,lambda_,t_) -dHdx(x_,u_,lambda_,t_)'; % (n x 1) Costate dynamics (i.e lambdaDot)
+lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false); % (n x tn) Costate trjectory)
+
+% Hamiltonian
+dHdu = @(x_,u_,lambda_,t_) dLdu(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 m 1]).*dfdu(x_,u_,t_),1); % (1 x m) Hamiltonian partial to input
+dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
 
 % Cost
 J = @(x_,u_,t_) sum(L(x_(:,1:end-1),u_,t_(1:end-1)).*diff(t)) + Psi(x_(:,end),t_(end)); % (1 x 1) Cost
+
+% Iteration count
+k = 0;
 
 % Records
 JTape = nan;
 gammaTape = nan;
 
 %% Solve
-x = optimal.simState(f,x0,u,t);
-xf = x(:,end);
-lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
-dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-k = 0;
 while ~stoppingCondition(x,u,lambda,t,k,dHduT)
     % Increment counter
     k = k + 1;
@@ -307,26 +332,24 @@ while ~stoppingCondition(x,u,lambda,t,k,dHduT)
     
     % Calculate step size
     gamma = optimal.armijo(x,u,lambda,t,f,g,lambdaf,H,dHdu,alpha,beta);
-%     gamma = .05;
 
     % Update records
     JTape(k) = J(x,u,t);
-    gammaTape(k) = gamma;
+    gammaTape(k) = mean(gamma(:));
     
     % Update input
     dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
-    u = u - gamma.*dHduT;
+    u = u - repmat(gamma,[m,1]).*dHduT;
     
 end
 x = optimal.simState(f,x0,u,t);
 
-
 end
 
-function stopFlag = stopDefault(~,~,~,~,k,dHduT)
-norm2dHduT = sum(sum(dHduT.*dHduT,1))
-stopFlag = norm2dHduT < 100;
-% stopFlag = k > 50;
+function stopFlag = stopDefault(~,~,~,~,k,~)
+% norm2dHduT = sum(sum(dHduT.*dHduT,1));
+% stopFlag = norm2dHduT < size(dHduT,2)/10 | k >= 10;
+stopFlag = k >= 10;
 end
 
 

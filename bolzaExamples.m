@@ -52,6 +52,7 @@ m = 1; % (1 x 1) Dimension of the input
 % Input - variables
 % uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory
 uI = sin(t(1:end-1)); % (m x tn-1) Initial input trajectory
+% uI = -rand(m,tn-1); % (m x tn-1) Initial input trajectory
 
 % Dynamics
 f = @(x_,u_,t_) u_; % (n x tn) State dynamics (i.e. xDot)
@@ -59,7 +60,7 @@ dfdx = @(x_,u_,t_) zeros(size(x_,1),size(x_,1),size(t_,2)); % (n x n x tn) State
 dfdu = @(x_,u_,t_) ones(size(x_,1),size(u_,1),size(t_,2)); % (n x m x tn) State dynamics partial to input
 
 % Cost
-rho = 1; % (1 x 1) Final cost weight
+rho = 10; % (1 x 1) Final cost weight
 L = @(x_,u_,t_) u_.^2; % (1 x tn) Instantaneous cost
 dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); % (1 x n x tn) Instantaneous cost partial to state
 dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); % (1 x m x tn) Instantaneous cost partial to input
@@ -71,10 +72,12 @@ alpha = 0.5;
 beta = 0.5;
 
 % Stopping condition
-stop = @(x_,u_,t_,k_) k_ >= 10;
+stop = @(x_,u_,lambda_,t_,k_,dHduT_) k_ >= 10;
 
 %% Single Integrator - Solve
-[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta]);
+tic
+[x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoAlpha',alpha,'armijoBeta',beta,'stoppingCondition',stop);
+toc
 
 % Initial and final cost
 xI = optimal.simState(f,x0,uI,t);
@@ -82,13 +85,15 @@ JI = J(xI,uI,t);
 JF = J(x,u,t);
 
 %% Single Integrator - Display Results
+fprintf('Number of iterations: %d\n',numel(JTape));
 fprintf('Initial cost: %.3f\n',JI);
 fprintf('Final cost: %.3f\n',JF);
-fprintf('Final state: %.3f\n',x(end));
+fprintf('Final state: %.3f\n\n',x(end));
+fprintf('Desired state: %.3f\n\n',xBar(end));
 
 % Plot
 figure(1)
-set(1,'Position',[gcf*[100 100] figSize])
+% set(1,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(t(1:end-1),uI)
 title(['Initial Input Trajectory (Cost: ' num2str(JI) ')'])
@@ -106,7 +111,7 @@ ylabel('State')
 grid on
 
 figure(2)
-set(2,'Position',[gcf*[100 100] figSize])
+% set(2,'Position',[gcf*[100 100] figSize])
 subplot(3,1,1)
 plot(t(1:end-1),u)
 title(['Final Input Trajectory (Cost: ' num2str(JF) ')'])
@@ -130,7 +135,7 @@ ylabel('Costate')
 grid on
 
 figure(3)
-set(3,'Position',[gcf*[100 100] figSize])
+% set(3,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(JTape)
 xlim([1 numel(gammaTape)])
@@ -177,7 +182,7 @@ tn = length(t); % (1 x 1) Number of time samples
 
 % State - parameters
 x0 = [0,0,0]'; % (n x 1) Initial state
-xBar = [10,0,0]'; % (n x 1) Desired state
+xBar = [10,10,pi+pi/4]'; % (n x 1) Desired state
 
 % Input - parameters
 m = 2; % (1 x 1) Dimension of the input
@@ -185,34 +190,52 @@ m = 2; % (1 x 1) Dimension of the input
 uI = zeros(m,tn-1); % (m x tn-1) Initial input trajectory
 
 % Dynamics
+% f = @(x_,u_,t_) [...
+%     u_(1,:) .* cos(x_(3,:));...
+%     u_(1,:) .* sin(x_(3,:));...
+%     u_(2,:)]; % (n x tn) State dynamics (i.e. xDot)
+% dfdx = @(x_,u_,t_) cat(2,...
+%     zeros(3,2,size(t_,2)),...
+%     permute([-u_(1,:).*sin(x_(3,:));u_(1,:).*cos(x_(3,:));zeros(1,size(t_,2))],[1 3 2]) ); % (n x n x tn) State dynamics partial to state
+% dfdu = @(x_,u_,t_) cat(2,...
+%     permute([cos(x_(3,:));sin(x_(3,:));zeros(1,size(t_,2))],[1 3 2]),...
+%     permute([zeros(1,size(t_,2));zeros(1,size(t_,2));ones(1,size(t_,2))],[1 3 2])); % (n x m x tn) State dynamics partial to input
+
+l = 1;
 f = @(x_,u_,t_) [...
-    u_(1,:) .* cos(x_(3,:));...
-    u_(1,:) .* sin(x_(3,:));...
+    u_(1,:) .* cos(x_(3,:)) - l * u_(2,:) .* sin(x_(3,:));...
+    u_(1,:) .* sin(x_(3,:)) + l * u_(2,:) .* cos(x_(3,:));...
     u_(2,:)]; % (n x tn) State dynamics (i.e. xDot)
 dfdx = @(x_,u_,t_) cat(2,...
     zeros(3,2,size(t_,2)),...
-    permute([-u_(1,:).*sin(x_(3,:));u_(1,:).*cos(x_(3,:));zeros(1,size(t_,2))],[1 3 2]) ); % (n x n x tn) State dynamics partial to state
+    permute([...
+        -u_(1,:) .* sin(x_(3,:)) - l * u_(2,:) .* cos(x_(3,:));...
+        u_(1,:) .* cos(x_(3,:)) - l * u_(2,:) .* sin(x_(3,:));...
+        zeros(1,size(t_,2))],[1 3 2]) ); % (n x n x tn) State dynamics partial to state
 dfdu = @(x_,u_,t_) cat(2,...
     permute([cos(x_(3,:));sin(x_(3,:));zeros(1,size(t_,2))],[1 3 2]),...
-    permute([zeros(1,size(t_,2));zeros(1,size(t_,2));ones(1,size(t_,2))],[1 3 2])); % (n x m x tn) State dynamics partial to input
+    permute([-l*sin(x_(3,:));l*cos(x_(3,:));ones(1,size(t_,2))],[1 3 2])); % (n x m x tn) State dynamics partial to input
+
 
 % Cost
-rho = 100; % (1 x 1) Final cost weight
+rho = 1; % (1 x 1) Final cost weight
 L = @(x_,u_,t_) sum(u_.*u_,1); % (1 x tn) Instantaneous cost
 dLdx = @(x_,u_,t_) zeros(1,size(x_,1),size(t_,2)); % (1 x n x tn) Instantaneous cost partial to state
 dLdu = @(x_,u_,t_) 2*permute(u_,[3,1,2]); % (1 x m x tn) Instantaneous cost partial to input
-Psi = @(xf_,tf_) rho*(xf_(1:2) - xBar(1:2))'*(xf_(1:2) - xBar(1:2)); % (1 x 1) Final cost
-dPsidx = @(xf_,tf_) 2*rho*[(xf_(1:2) - xBar(1:2))' 0]; % (1 x n) Final cost partial to final state
+Psi = @(xf_,tf_) rho*(xf_ - xBar)'*(xf_ - xBar); % (1 x 1) Final cost
+dPsidx = @(xf_,tf_) 2*rho*(xf_ - xBar)'; % (1 x n) Final cost partial to final state
 
 % Armijo parameters
-alpha = 0.25;
-beta = 0.75;
+alpha = 0.5;
+beta = 0.1;
 
 % Stopping condition
-stop = @(x_,u_,t_,k_) k_ >= 10;
+stop = @(x_,u_,lambda_,t_,k_,dHduT_) k_ >= 30;
 
 %% Single Integrator - Solve
-[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoParams',[alpha beta],'stoppingCondition',stop);
+tic
+[x,u,lambda,J,JTape,gammaTape] = bolza(t,x0,uI,f,dfdx,dfdu,L,dLdx,dLdu,Psi,dPsidx,'armijoAlpha',alpha,'armijoBeta',beta,'stoppingCondition',stop);
+toc
 
 % Initial and final cost
 xI = optimal.simState(f,x0,uI,t);
@@ -220,13 +243,16 @@ JI = J(xI,uI,t);
 JF = J(x,u,t);
 
 %% Single Integrator - Display Results
+fprintf('Number of iterations: %d\n',numel(JTape));
 fprintf('Initial cost: %.3f\n',JI);
 fprintf('Final cost: %.3f\n',JF);
 disp(['Final state: ' num2str(x(:,end)',3)]);
+disp(['Desired state: ' num2str(xBar(:,end)',3)]);
+fprintf('\n')
 
 %% Plot
 figure(1)
-set(1,'Position',[gcf*[100 100] figSize])
+% set(1,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(t(1:end-1),uI)
 title(['Initial Input Trajectory (Cost: ' num2str(JI) ')'])
@@ -244,7 +270,7 @@ ylabel('State')
 grid on
 
 figure(2)
-set(2,'Position',[gcf*[100 100] figSize])
+% set(2,'Position',[gcf*[100 100] figSize])
 subplot(3,1,1)
 plot(t(1:end-1),u)
 title(['Final Input Trajectory (Cost: ' num2str(JF) ')'])
@@ -268,7 +294,7 @@ ylabel('Costate')
 grid on
 
 figure(3)
-set(3,'Position',[gcf*[100 100] figSize])
+% set(3,'Position',[gcf*[100 100] figSize])
 subplot(2,1,1)
 plot(JTape)
 xlim([1 numel(gammaTape)])
