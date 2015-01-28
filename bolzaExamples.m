@@ -25,7 +25,7 @@ import optimal.*
 %% Set plot parameters
 figSize = [700 375];
 
-if 0
+if 1
 %% Single Integrator Example
 % In this example the |optimal.bolza| function is used to solve the
 % following problem:
@@ -158,7 +158,7 @@ end
 end
 
 
-if 1
+if 0
 %% Unicycle Example
 % In this example the |optimal.bolza| function is used to solve the
 % following problem:
