@@ -1,4 +1,4 @@
-function [x,xD] = simulate(f,x0,t,varargin)
+function [x,xD] = simulate(f,x0,t,xm,xM,varargin)
 % The "simulate" function integrates the state in time.
 %
 % SYNTAX:
@@ -21,6 +21,13 @@ function [x,xD] = simulate(f,x0,t,varargin)
 %
 %   t - (1 x tn number)
 %       Time trajectory.
+%
+%   xm - (n x 1 number)
+%       Minimum state constraint.
+%
+%   xM - (n x 1 number)
+%       Maximum state constraint.
+%   
 %
 % PROPERTIES: TODO: Add properties
 %   'propertiesName' - (size type) [defaultPropertyValue]
@@ -73,7 +80,17 @@ assert(isnumeric(t) && isreal(t) && isvector(t),...
 t = t(:)';
 tn = numel(t);
 
-% % Get and check properties
+if nargin < 4, xm = -inf*ones(n,1); end
+assert(isnumeric(xm) && isreal(xm) && isvector(xm) && length(xm) == n,...
+    'optimal:simulate:xm',...
+    'Input argument "xm" must be a %d element vector of real numbers.',n)
+
+if nargin < 5, xM = inf*ones(n,1); end
+assert(isnumeric(xM) && isreal(xM) && isvector(xM) && length(xM) == n && all(xM >= xm),...
+    'optimal:simulate:xM',...
+    'Input argument "xM" must be a %d element vector of real numbers all greater or equal to xm.',n)
+
+%% Get and check properties
 % propargin = size(varargin,2);
 % 
 % assert(mod(propargin,2) == 0,...
@@ -110,7 +127,11 @@ x(:,1) = x0;
 for k = 1:tn-1
     xD(:,k) = f(x(:,k),t(k));
     ts = t(k+1) - t(k);
-    x(:,k+1) = x(:,k) + xD(:,k)*ts;
+    x(:,k+1) = constrain(x(:,k) + xD(:,k)*ts,xm,xM);
 end
 
+end
+
+function x = constrain(x,xm,xM)
+x = min(max(x,xm),xM);
 end
