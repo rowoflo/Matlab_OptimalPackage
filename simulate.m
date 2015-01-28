@@ -1,9 +1,9 @@
-function [x,xD] = simulate(f,x0,t,xm,xM,varargin)
+function [x,xD] = simulate(f,t,x0,xm,xM,varargin)
 % The "simulate" function integrates the state in time.
 %
 % SYNTAX:
-%   [x,xD] = optimal.simulate(f,x0,t)
-%   [x,xD] = optimal.simulate(f,x0,t,'PropertyName',PropertyValue,...)
+%   [t,x,xD] = optimal.simulate(f,x0,t)
+%   [t,x,xD] = optimal.simulate(f,x0,t,'PropertyName',PropertyValue,...)
 % 
 % INPUTS:
 %   f - (function_handle)
@@ -16,11 +16,11 @@ function [x,xD] = simulate(f,x0,t,xm,xM,varargin)
 %       OUTPUTS:
 %           xDot - (n x tn number) State derivative.
 %
-%   x0 - (n x 1 number) 
-%       Initial conidtion.
-%
 %   t - (1 x tn number)
 %       Time trajectory.
+%
+%   x0 - (n x 1 number) 
+%       Initial conidtion.
 %
 %   xm - (n x 1 number)
 %       Minimum state constraint.
@@ -68,17 +68,17 @@ assert(isa(f,'function_handle'),...
     'optimal:simulate:f',...
     'Input argument "f" must be a function handle.')
 
-assert(isnumeric(x0) && isvector(x0),...
-    'optimal:simulate:x0',...
-    'Input argument "x0" must be a vector.')
-x0 = x0(:);
-n = size(x0,1);
-
 assert(isnumeric(t) && isreal(t) && isvector(t),...
     'optimal:simulate:t',...
     'Input argument "t" must be a vector of real numbers.')
 t = t(:)';
 tn = numel(t);
+
+assert(isnumeric(x0) && isvector(x0),...
+    'optimal:simulate:x0',...
+    'Input argument "x0" must be a vector.')
+x0 = x0(:);
+n = size(x0,1);
 
 if nargin < 4, xm = -inf*ones(n,1); end
 assert(isnumeric(xm) && isreal(xm) && isvector(xm) && length(xm) == n,...
