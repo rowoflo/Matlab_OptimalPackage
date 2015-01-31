@@ -144,7 +144,7 @@ assert(ischar(direction) && ismember(direction,{'forward','backward'}),...
 %% Run
 if strcmp(direction,'forward') % Simulate forward
     x = nan(n,tn);
-    u = nan(m,tn-1);
+    u = nan(m,tn);
     xDot = nan(n,tn-1);
     x(:,1) = x0;
     
@@ -154,6 +154,7 @@ if strcmp(direction,'forward') % Simulate forward
         ts = t(k+1) - t(k);
         x(:,k+1) = constrain(x(:,k) + xDot(:,k)*ts,xm,xM);
     end
+    u(:,tn) = g(x(:,tn),t(tn),tn);
     
 else % Simulate backward
 % If you simulate forward then backwards the answers will not be the same
@@ -164,16 +165,17 @@ else % Simulate backward
 % right-hand state. Probably the same with xDot.
 
     x = nan(n,tn);
-    u = nan(m,tn-1);
+    u = nan(m,tn);
     xDot = nan(n,tn-1);
     x(:,end) = x0;
     
     for k = tn:-1:2
-        u(:,k-1) = g(x(:,k),t(k),k);
+        u(:,k) = g(x(:,k),t(k),k);
         xDot(:,k-1) = f(x(:,k),u(:,k-1),t(k),k);
         ts = t(k) - t(k-1);
         x(:,k-1) = constrain(x(:,k) - xDot(:,k-1)*ts,xm,xM);
     end
+    u(:,1) = g(x(:,1),t(1),1);
 
 end
 
