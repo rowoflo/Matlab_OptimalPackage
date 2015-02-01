@@ -1,10 +1,9 @@
-function [x,u,xDot] = simulate(f,g,t,x0,xm,xM,varargin)
+function [x,u,xDot] = simulate(f,g,t,x0,varargin)
 % The "simulate" function integrates the state in time.
 %
 % SYNTAX:
-%   [x,u,xDot] = optimal.simulate(f,g,x0,t)
-%   [x,u,xDot] = optimal.simulate(f,g,x0,t,xm,xM)
-%   [x,u,xDot] = optimal.simulate(f,g,x0,t,xm,xM,'PropertyName',PropertyValue,...)
+%   [x,u,xDot] = optimal.simulate(f,g,t,x0)
+%   [x,u,xDot] = optimal.simulate(f,g,t,x0,'PropertyName',PropertyValue,...)
 % 
 % INPUTS:
 %   f - (function_handle)
@@ -43,7 +42,19 @@ function [x,u,xDot] = simulate(f,g,t,x0,xm,xM,varargin)
 %       Maximum state constraint.
 %   
 %
-% PROPERTIES: TODO: Add properties
+% PROPERTIES:
+%   'statemin' - (n x 1 number) [-inf*ones(n,1)]
+%       Minimum state constraint.
+%
+%   'statemax' - (n x 1 number) [inf*ones(n,1)]
+%       Maximum state constraint.
+%
+%   'inputmin' - (m x 1 number) [-inf*ones(m,1)]
+%       Minimum input constraint.
+%
+%   'inputmax' - (m x 1 number) [inf*ones(m,1)]
+%       Maximum input constraint.
+%
 %   'direction' - ('forward' or 'backward') ['forward']
 %       Direction of simulation. If 'forward' then "x0" is the state at
 %       time "t[0]", 'backward' then "x0" is the state at time "t[tn]".
@@ -103,16 +114,6 @@ assert(isnumeric(x0) && isvector(x0),...
 x0 = x0(:);
 n = size(x0,1);
 
-if nargin < 5, xm = -inf*ones(n,1); end
-assert(isnumeric(xm) && isreal(xm) && isvector(xm) && length(xm) == n,...
-    'optimal:simulate:xm',...
-    'Input argument "xm" must be a %d element vector of real numbers.',n)
-
-if nargin < 6, xM = inf*ones(n,1); end
-assert(isnumeric(xM) && isreal(xM) && isvector(xM) && length(xM) == n && all(xM >= xm),...
-    'optimal:simulate:xM',...
-    'Input argument "xM" must be a %d element vector of real numbers all greater or equal to xm.',n)
-
 %% Get and check properties
 propargin = size(varargin,2);
 
@@ -125,6 +126,14 @@ propValues = varargin(2:2:propargin);
 
 for iParam = 1:propargin/2
     switch lower(propStrs{iParam})
+        case lower('statemin')
+            xm = propValues{iParam};
+        case lower('statemax')
+            xM = propValues{iParam};
+        case lower('inputmin')
+            um = propValues{iParam};
+        case lower('inputmax')
+            uM = propValues{iParam};
         case lower('direction')
             direction = propValues{iParam};
         otherwise
@@ -135,8 +144,28 @@ end
 
 % Set to default value if necessary
 if ~exist('direction','var'), direction = 'forward'; end
+if ~exist('xm','var'), xm = -inf*ones(n,1); end
+if ~exist('xM','var'), xM = inf*ones(n,1); end
+if ~exist('um','var'), um = -inf*ones(m,1); end
+if ~exist('uM','var'), uM = inf*ones(m,1); end
 
-% Check property values for errors TODO: Add property error checks
+% Check property values for errors
+assert(isnumeric(xm) && isreal(xm) && isvector(xm) && length(xm) == n,...
+    'optimal:simulate:xm',...
+    'Input argument "xm" must be a %d element vector of real numbers.',n)
+
+assert(isnumeric(xM) && isreal(xM) && isvector(xM) && length(xM) == n && all(xM >= xm),...
+    'optimal:simulate:xM',...
+    'Input argument "xM" must be a %d element vector of real numbers all greater or equal to minimum state constraint.',n)
+
+assert(isnumeric(um) && isreal(um) && isvector(um) && length(um) == m,...
+    'optimal:simulate:um',...
+    'Input argument "um" must be a %d element vector of real numbers.',m)
+
+assert(isnumeric(uM) && isreal(uM) && isvector(uM) && length(uM) == m && all(uM >= um),...
+    'optimal:simulate:uM',...
+    'Input argument "uM" must be a %d element vector of real numbers all greater or equal to minimum input constraint.',m)
+
 assert(ischar(direction) && ismember(direction,{'forward','backward'}),...
     'optimal:simulate:direction',...
     'Property "direction" must be either ''forward'' or ''backward''.')
@@ -149,12 +178,12 @@ if strcmp(direction,'forward') % Simulate forward
     x(:,1) = x0;
     
     for k = 1:tn-1
-        u(:,k) = g(x(:,k),t(k),k);
+        u(:,k) = constrain(g(x(:,k),t(k),k),um,uM);
         xDot(:,k) = f(x(:,k),u(:,k),t(k),k);
         ts = t(k+1) - t(k);
         x(:,k+1) = constrain(x(:,k) + xDot(:,k)*ts,xm,xM);
     end
-    u(:,tn) = g(x(:,tn),t(tn),tn);
+    u(:,tn) = constrain(g(x(:,tn),t(tn),tn),um,uM);
     
 else % Simulate backward
 % If you simulate forward then backwards the answers will not be the same
@@ -170,12 +199,12 @@ else % Simulate backward
     x(:,end) = x0;
     
     for k = tn:-1:2
-        u(:,k) = g(x(:,k),t(k),k);
+        u(:,k) = constrain(g(x(:,k),t(k),k),um,uM);
         xDot(:,k-1) = f(x(:,k),u(:,k-1),t(k),k);
         ts = t(k) - t(k-1);
         x(:,k-1) = constrain(x(:,k) - xDot(:,k-1)*ts,xm,xM);
     end
-    u(:,1) = g(x(:,1),t(1),1);
+    u(:,1) = constrain(g(x(:,1),t(1),1),um,uM);
 
 end
 

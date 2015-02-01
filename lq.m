@@ -214,10 +214,10 @@ end
 g = @(~,~,~) 0;
 
 fP = @(P_,~,~,k_) reshape(-reshape(P_,[n n])*fA(k_) - fA(k_)'*reshape(P_,[n n]) - fQ(k_) + reshape(P_,[n n])*fB(k_)*fR(k_)^-1*fB(k_)'*reshape(P_,[n n]),[n*n 1]);
-P = reshape(optimal.simulate(fP,g,t,S,-inf*ones(n,1),inf*ones(n,1),'direction','backward'),[n n tn]);
+P = reshape(optimal.simulate(fP,g,t,S,'direction','backward'),[n n tn]);
 
 fW = @(W_,~,~,k_) (P(:,:,k_)*fB(k_)*fR(k_)^-1*fB(k_)' - fA(k_)')*W_ - fq(k_) + P(:,:,k_)*fB(k_)*fR(k_)^-1*fr(k_);
-W = optimal.simulate(fW,g,t,zeros(n,1),-inf*ones(n,1),inf*ones(n,1),'direction','backward');
+W = optimal.simulate(fW,g,t,zeros(n,1),'direction','backward');
 
 f = @(x_,u_,t_,k_) fA(k_)*x_ + fB(k_)*u_;
 g = @(x_,t_,k_) -fR(k_)^-1*fB(k_)'*P(:,:,k_)*x_ - fR(k_)^-1*(fB(k_)'*W(:,k_) + fr(k_));
