@@ -1,4 +1,4 @@
-function [P,W] = lq(t,A,B,Q,R,S,q,r)
+function [x,u,xDot,P,W] = lq(t,x0,A,B,Q,R,S,q,r)
 % The "lq" function the general Linear Quadratic problem: 
 %   min_u J = \int_0^T 1/2 x^\T Q x + 1/2 u^\T R u + q^\T x + r^\T u dt + 1/2 x^\T(tf) S x(tf) 
 %   s.t
@@ -7,12 +7,15 @@ function [P,W] = lq(t,A,B,Q,R,S,q,r)
 %   u = -R^{-1} B^\T P x - R^{-1} (B^\T w + r)
 %
 % SYNTAX:
-%   [P,W] = lq(t,A,B,Q,R,S)
-%   [P,W] = lq(t,A,B,Q,R,S,q,r)
+%   [x,u,P,W] = lq(t,x0,A,B,Q,R,S)
+%   [x,u,P,W] = lq(t,x0,A,B,Q,R,S,q,r)
 % 
 % INPUTS:
 %   t - (1 x tn)
 %       Time trajectory.
+%
+%   x0 - (n x 1)
+%       Initial state.
 %
 %   A - (n x n or n x n x tn or function_handle)
 %       State to state dynamics matrix.
@@ -40,7 +43,7 @@ function [P,W] = lq(t,A,B,Q,R,S,q,r)
 %       * 3 dimensional specifies matrix at each time point.
 %       * Function handle: R(k) returns m x m matrix for given time index.
 %
-%   S - (n x n number)
+%   S - (n x n)
 %       Semi-positive definite symmetric weighting matrix on the quadratic
 %       term of the final state.
 %
@@ -57,10 +60,19 @@ function [P,W] = lq(t,A,B,Q,R,S,q,r)
 %       * Function handle: r(k) returns m x 1 vector for given time index.
 % 
 % OUTPUTS:
-%   P - (n x n x tn number) 
+%   x - (n x tn)
+%       Optimal state trajectory.
+%
+%   u - (m x tn)
+%       Optimal input trajectory.
+%
+%   xDot - (n x tn)
+%       Optimal state time derivative trajectory.
+%
+%   P - (n x n x tn) 
 %       Quadratic term in the solution to Riccati equation.
 %
-%   W - (n x tn number) 
+%   W - (n x tn) 
 %       Linear term in the solution to Riccati equation.
 %
 % EXAMPLES: TODO: Add examples
@@ -83,7 +95,7 @@ function [P,W] = lq(t,A,B,Q,R,S,q,r)
 %% Initialize
 
 % Check number of inputs
-narginchk(6,8)
+narginchk(7,9)
 
 % Check input arguments for errors
 assert(isnumeric(t) && isreal(t) && isvector(t) && all(diff(t) > 0),...
@@ -92,18 +104,22 @@ assert(isnumeric(t) && isreal(t) && isvector(t) && all(diff(t) > 0),...
 t = t(:)';
 tn = size(t,2);
 
+assert(isnumeric(x0) && isreal(x0) && isvector(x0),...
+    'optimal:lq:x0',...
+    'Input argument "x0" must be a vector of real numbers.')
+x0 = x0(:);
+n = size(x0,1);
+
 if isa(A,'function_handle')
     fA = A;
-    n = size(A(1),1);
 else
     assert(isnumeric(A) && isreal(A) && size(A,1) == size(A,2),...
         'optimal:lq:A',...
-        'Input argument "A" must be a n x n matrix of real numbers.')
-    n = size(A,1);
+        'Input argument "A" must be a %d x %d matrix of real numbers.',n,n)
     if length(size(A)) == 3
         assert(size(A,3) == tn,...
             'optimal:lq:A',...
-            'Input argument "A" must be a n x n x %d matrix of real numbers.',tn)
+            'Input argument "A" must be a %d x %d x %d matrix of real numbers.',n,n,tn)
         fA = @(k_) A(:,:,k_);
     else
         fA = @(k_) A(:,:,1);
@@ -202,5 +218,9 @@ P = reshape(optimal.simulate(fP,g,t,S,-inf*ones(n,1),inf*ones(n,1),'direction','
 
 fW = @(W_,~,~,k_) (P(:,:,k_)*fB(k_)*fR(k_)^-1*fB(k_)' - fA(k_)')*W_ - fq(k_) + P(:,:,k_)*fB(k_)*fR(k_)^-1*fr(k_);
 W = optimal.simulate(fW,g,t,zeros(n,1),-inf*ones(n,1),inf*ones(n,1),'direction','backward');
+
+f = @(x_,u_,t_,k_) fA(k_)*x_ + fB(k_)*u_;
+g = @(x_,t_,k_) -fR(k_)^-1*fB(k_)'*P(:,:,k_)*x_ - fR(k_)^-1*(fB(k_)'*W(:,k_) + fr(k_));
+[x,u,xDot] = optimal.simulate(f,g,t,x0);
 
 end

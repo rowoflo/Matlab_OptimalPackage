@@ -50,13 +50,13 @@ function [x,u,xDot] = simulate(f,g,t,x0,xm,xM,varargin)
 % 
 % OUTPUTS:
 %   x - (n x tn number) 
-%       Solution trajectory.
+%       Solution state trajectory.
 %
 %   u - (m x tn-1 number)
 %       Input trajectory
 %
 %   xDot - (n x tn number) 
-%       Solution time derivative trajectory.
+%       Solution state time derivative trajectory.
 %
 % EXAMPLES: TODO: Add examples
 %
@@ -103,12 +103,12 @@ assert(isnumeric(x0) && isvector(x0),...
 x0 = x0(:);
 n = size(x0,1);
 
-if nargin < 4, xm = -inf*ones(n,1); end
+if nargin < 5, xm = -inf*ones(n,1); end
 assert(isnumeric(xm) && isreal(xm) && isvector(xm) && length(xm) == n,...
     'optimal:simulate:xm',...
     'Input argument "xm" must be a %d element vector of real numbers.',n)
 
-if nargin < 5, xM = inf*ones(n,1); end
+if nargin < 6, xM = inf*ones(n,1); end
 assert(isnumeric(xM) && isreal(xM) && isvector(xM) && length(xM) == n && all(xM >= xm),...
     'optimal:simulate:xM',...
     'Input argument "xM" must be a %d element vector of real numbers all greater or equal to xm.',n)
