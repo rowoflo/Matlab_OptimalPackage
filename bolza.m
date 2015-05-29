@@ -96,8 +96,8 @@ function [x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,d
 %       SYNTAX:
 %           cf  = Psi(xf,tf);
 %       INPUTS:
-%           xf - (n x tn number) Final state.
-%           tf - (1 x tn number) Final time.
+%           xf - (n x 1 number) Final state.
+%           tf - (1 x 1 number) Final time.
 %       OUTPUTS:
 %           cf - (1 x 1 number) Final cost.
 %
@@ -106,8 +106,8 @@ function [x,u,lambda,J,dHdu,JTape,gammaTape] = bolza(t,x0,u,f,dfdx,dfdu,L,dLdx,d
 %       SYNTAX:
 %           cfx  = dPsidx(xf,tf);
 %       INPUTS:
-%           xf - (n x tn number) Final state.
-%           tf - (1 x tn number) Final time.
+%           xf - (n x 1 number) Final state.
+%           tf - (1 x 1 number) Final time.
 %       OUTPUTS:
 %           cfx - (1 x n number) Final cost partial to final state.
 %           
@@ -326,10 +326,13 @@ lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false); % (n x tn) Costate trjec
 
 % Hamiltonian
 dHdu = @(x_,u_,lambda_,t_) dLdu(x_,u_,t_) + sum(repmat(permute(lambda_,[1,3,2]),[1 m 1]).*dfdu(x_,u_,t_),1); % (1 x m) Hamiltonian partial to input
-dHduT = permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
+dHduT = permute(dHdu(x(:,1:end-1),u(:,1:end-1),lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
 
 % Cost
-J = @(x_,u_,t_) sum(L(x_(:,1:end-1),u_,t_(1:end-1)).*diff(t)) + Psi(x_(:,end),t_(end)); % (1 x 1) Cost
+J = @(x_,u_,t_) sum(L(x_(:,1:end-1),u_(:,1:end-1),t_(1:end-1)).*diff(t)) + Psi(x_(:,end),t_(end)); % (1 x 1) Cost
+
+% Trajectory update
+Phi = @(x_,u_,lambda_,gamma_) trajUpdate(x_,u_,lambda_,gamma_,dHdu);
 
 % Iteration count
 k = 0;
@@ -356,7 +359,7 @@ switch method
             lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
             
             % Calculate step size
-            gamma = optimal.armijo(x,u,lambda,t,f,g,lambdaf,H,dHdu,alpha,beta);
+            gamma = optimal.armijo(t,x,u,lambda,H,Phi,dHdu,alpha,beta);
             
             % Update records
             JTape(k) = J(x,u,t);
@@ -437,6 +440,10 @@ x = optimal.simState(f,x0,u,t);
 xf = x(:,end);
 lambda = optimal.simCostate(g,lambdaf(xf),x,u,t,false);
 value = repmat(sum(permute(dHdu(x(:,1:end-1),u,lambda(:,1:end-1),t(1:end-1)),[2 3 1]).^2,1),1,m);
+end
+
+function [x1,u1,lambda1] = trajUpdate(x,u,lambda,gamma,t,dHdu)
+dHduT = permute(dHdu(x(:,1:end-1),u(:,1:end-1),lambda(:,1:end-1),t(1:end-1)),[2 3 1]);
 end
 
 

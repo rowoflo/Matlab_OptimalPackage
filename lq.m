@@ -189,7 +189,7 @@ end
 if isa(Q,'function_handle')
     fQ = Q;
 else
-    assert(isnumeric(Q) && isreal(Q) && isequal(size(Q),[n n]) && all(Q == Q') && all(real(eig(Q)) >= 0),...
+    assert(isnumeric(Q) && isreal(Q) && isequal(size(Q),[n n]) && all(all(Q == Q')) && all(real(eig(Q)) >= 0),...
         'optimal:lq:Q',...
         'Input argument "Q" must be a %d x %d semi-positive definite symmetric matrix of real numbers.',n,n)
     if length(size(Q)) == 3
@@ -205,7 +205,7 @@ end
 if isa(R,'function_handle')
     fR = R;
 else
-    assert(isnumeric(R) && isreal(R) && isequal(size(R),[m m]) && all(R == R') && all(real(eig(Q)) > 0),...
+    assert(isnumeric(R) && isreal(R) && isequal(size(R),[m m]) && all(all(R == R')) && all(real(eig(R)) > 0),...
         'optimal:lq:R',...
         'Input argument "R" must be a %d x %d positive definite symmetric matrix of real numbers.',m,m)
     if length(size(R)) == 3
@@ -218,7 +218,7 @@ else
     end
 end
 
-assert(isnumeric(S) && isreal(S) && isequal(size(S),[n n]) && all(S == S') && all(real(eig(S)) >= 0),...
+assert(isnumeric(S) && isreal(S) && isequal(size(S),[n n]) && all(all(S == S')) && all(real(eig(S)) >= 0),...
     'optimal:lq:S',...
     'Input argument "S" must be a %d x %d semi-positive definite symmetric matrix of real numbers.',n,n)
 
@@ -331,9 +331,9 @@ assert(isnumeric(uM) && isreal(uM) && isvector(uM) && length(uM) == m && all(uM 
 g = @(~,~,~) 0;
 
 fP = @(P_,~,~,k_) reshape(-reshape(P_,[n n])*fA(k_) - fA(k_)'*reshape(P_,[n n]) - fQ(k_) + reshape(P_,[n n])*fB(k_)*fR(k_)^-1*fB(k_)'*reshape(P_,[n n]),[n*n 1]);
-P = reshape(optimal.simulate(t,S,fP,g,'direction','backward'),[n n tn]);
+P = reshape(optimal.simulate(t,reshape(S,[n*n 1]),fP,g,'direction','backward'),[n n tn]);
 
-if any(fq(1:tn) ~= 0) || any(fr(1:tn) ~= 0)
+if any(any(fq(1:tn) ~= 0)) || any(any(fr(1:tn) ~= 0))
     fW = @(W_,~,~,k_) (P(:,:,k_)*fB(k_)*fR(k_)^-1*fB(k_)' - fA(k_)')*W_ - fq(k_) + P(:,:,k_)*fB(k_)*fR(k_)^-1*fr(k_);
     W = optimal.simulate(t,zeros(n,1),fW,g,'direction','backward');
     g = @(x_,t_,k_) -fR(k_)^-1*fB(k_)'*P(:,:,k_)*(x_ - fxr(k_)) - fR(k_)^-1*(fB(k_)'*W(:,k_) + fr(k_)) + fur(k_);

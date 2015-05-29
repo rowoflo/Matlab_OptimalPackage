@@ -35,13 +35,6 @@ function [x,u,xDot] = simulate(t,x0,f,g,varargin)
 %       OUTPUTS:
 %           u - (m x 1) Input.
 %
-%   xm - (n x 1)
-%       Minimum state constraint.
-%
-%   xM - (n x 1)
-%       Maximum state constraint.
-%   
-%
 % PROPERTIES:
 %   'statemin' - (n x 1) [-inf*ones(n,1)]
 %       Minimum state constraint.
@@ -188,10 +181,7 @@ if strcmp(direction,'forward') % Simulate forward
 else % Simulate backward
 % If you simulate forward then backwards the answers will not be the same
 % because the u is based on left-side state in forward simulation and
-% right-side state in backward simulation. There might be way to make them
-% equal by formately picking the u at each step the backward simulation as
-% the one such that in one step forward simuation will result in the
-% right-hand state. Probably the same with xDot.
+% right-side state in backward simulation.
 
     x = nan(n,tn);
     u = nan(m,tn);

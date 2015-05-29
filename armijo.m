@@ -1,9 +1,9 @@
-function gamma = armijo(t,x,u,J,Phi,dJdu,alpha,beta,gamma0,kappaMax)
+function gamma = armijo(t,x,u,lambda,H,Phi,dHdu,alpha,beta,gamma0,kappaMax)
 % The "armijo" function calculates an appropriate step size for gradiant
 % descent.
 %
 % SYNTAX:
-%   gamma = optimal.armijo(t,x,u,J,h,dJdu,alpha,beta,gamma0,kappaMax)
+%   gamma = optimal.armijo(t,x,u,lambda,H,Phi,dHdu,alpha,beta,gamma0,kappaMax)
 % 
 % INPUTS:
 %   t - (1 x tn increasing)
@@ -15,13 +15,17 @@ function gamma = armijo(t,x,u,J,Phi,dJdu,alpha,beta,gamma0,kappaMax)
 %   u - (m x tn)
 %       Input trajectory.
 %
-%   J - (function_handle)
+%   lambda - (n x tn)
+%       Costate trajectory.
+%
+%   H - (function_handle)
 %       Trajectory cost.
 %       SYNTAX:
-%           C_J  = J(x,u,t);
+%           C_H  = H(x,u,lambda,t);
 %       INPUTS:
 %           x - (n x tn number) State trajecory.
 %           u - (m x tn number) Input trajecory.
+%           lambda - (n x tn number) Costate trajectory.
 %           t - (1 x tn number) Time trajecory.
 %       OUTPUTS:
 %           C - (1 x 1 number) Trajectory cost.
@@ -30,25 +34,28 @@ function gamma = armijo(t,x,u,J,Phi,dJdu,alpha,beta,gamma0,kappaMax)
 %       Next state and input trajectories given a step size and current
 %       trajectories and step size.
 %       SYNTAX:
-%           [x1,u1] = Phi(x,u,t,gamma);
+%           [x1,u1] = Phi(x,u,lambda,gamma);
 %       INPUTS:
 %           x - (n x tn number) State trajecory.
 %           u - (m x tn number) Input trajecory.
-%           t - (1 x tn number) Time trajecory.
+%           lambda - (n x tn number) Costate trajectory.
+%           gamma - (1 x 1 number) Step size.
 %       OUTPUTS:
-%           x1 - (n x tn number) Next state trajecory.
-%           u1 - (m x tn number) Next input trajecory.
+%           x1 - (n x tn number) Next state trajectory.
+%           u1 - (m x tn number) Next input trajectory.
+%           lambda1 - (n x tn number) Next costate trajectory.
 %
-%   dJdu - (function_handle)
+%   dHdu - (function_handle)
 %       Cost partial to input.
 %       SYNTAX:
-%           C_dJdu  = dJdu(x,u,t);
+%           C_dHdu  = dHdu(x,u,lambda,t);
 %       INPUTS:
 %           x - (n x tn number) State trajecory.
 %           u - (m x tn number) Input trajecory.
+%           lambda - (n x tn number) Costate trajectory.
 %           t - (1 x tn number) Time trajecory.
 %       OUTPUTS:
-%           C_dJdu - (m x tn number) Partial cost to input.
+%           C_dHdu - (m x tn number) Partial cost to input.
 %
 %   alpha - (1 x 1 0<=number<=1) [0.5]
 %       Armijo parameter.
@@ -85,13 +92,13 @@ function gamma = armijo(t,x,u,J,Phi,dJdu,alpha,beta,gamma0,kappaMax)
 % Check Inputs
 
 % Check number of inputs
-narginchk(6,inf)
+narginchk(7,inf)
 
 % Apply default values
-if nargin < 7, alpha = 0.5; end
-if nargin < 8, beta = 0.5; end
-if nargin < 9, gamma0 = 1; end
-if nargin < 10, kappaMax = 10; end
+if nargin < 8, alpha = 0.5; end
+if nargin < 9, beta = 0.5; end
+if nargin < 10, gamma0 = 1; end
+if nargin < 11, kappaMax = 10; end
 
 % Check input arguments for errors
 assert(isnumeric(t) && isreal(t) && isvector(t),...
@@ -100,25 +107,29 @@ assert(isnumeric(t) && isreal(t) && isvector(t),...
 t = t(:)';
 tn = numel(t);
 
-assert(isnumeric(x) && numel(size(u)) == 2 && size(x,2) == tn,...
+assert(isnumeric(x) && numel(size(x)) == 2 && size(x,2) == tn,...
     'optimal:armijo:x',...
-    'Input argument "x" must be a matrix witha a length of %d.',tn)
+    'Input argument "x" must be a matrix with a length of %d.',tn)
 
 assert(isnumeric(u) && numel(size(u)) == 2 && size(u,2) == tn,...
     'optimal:armijo:u',...
     'Input argument "u" must be a matrix with a length of %d.',tn)
 
-assert(isa(J,'function_handle'),...
-    'optimal:armijo:J',...
-    'Input argument "J" must be a function handle.')
+assert(isnumeric(lambda) && numel(size(lambda)) == 2 && size(lambda,2) == tn,...
+    'optimal:armijo:lambda',...
+    'Input argument "lambda" must be a matrix with a length of %d.',tn)
+
+assert(isa(H,'function_handle'),...
+    'optimal:armijo:H',...
+    'Input argument "H" must be a function handle.')
 
 assert(isa(Phi,'function_handle'),...
     'optimal:armijo:Phi',...
     'Input argument "Phi" must be a function handle.')
 
-assert(isa(dJdu,'function_handle'),...
-    'optimal:armijo:dJdu',...
-    'Input argument "dJdu" must be a function handle.')
+assert(isa(dHdu,'function_handle'),...
+    'optimal:armijo:dHdu',...
+    'Input argument "dHdu" must be a function handle.')
 
 assert(isnumeric(alpha) && isreal(alpha) && numel(alpha) == 1 && alpha >= 0 && alpha <= 1,...
     'optimal:armijo:alpha',...
@@ -138,16 +149,17 @@ assert(isnumeric(kappaMax) && isreal(kappaMax) && numel(kappaMax) == 1 && kappaM
 
 %% Initialize
 tDel = mean(diff(t));
-dJdu_norm2 = norm(dJdu(x,u,t))^2*tDel;
+dHdu_norm = norm(dHdu(x,u,lambda,t))*tDel;
 kappa = 0;
-J0 = J(x,u,t);
-J1 = inf;
+H0 = H(x,u,lambda,t);
+H1 = inf;
+gamma = gamma0;
 
 %% Run
-while J1 - J0 > -alpha*dJdu_norm2*gamma0*beta^kappa && kappa < kappaMax
+while H1 - H0 > -alpha*dHdu_norm*beta^kappa && kappa < kappaMax
     gamma = gamma0*beta^kappa;
-    [x1, u1] = Phi(x,u,gamma);
-    J1 = J(x1,u1,t);
+    [x1, u1, lambda1] = Phi(x,u,lambda,gamma);
+    H1 = H(x1,u1,lambda1,t);
     kappa = kappa + 1;
 end
 
